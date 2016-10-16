@@ -6,20 +6,20 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 
 @Entity
 public class BackupFileDataPacket {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.AUTO)
-	private Long fileUpdateID;	
-	private Date dateTimeCaptured;	
+	private Long fileUpdateID;
+	private Long fileBatchID;	
 	private int totalBytes;
 	private int bytesContained;
 	private int packetNumber;	
-	private int packetsTotal;	
+	private int packetsTotal;
+	private String fileDirectory;
+	private String fileName;
 	private String fileData;
 	
 	public enum FileAction {
@@ -32,16 +32,22 @@ public class BackupFileDataPacket {
 	
 	protected BackupFileDataPacket() { }
 	
-	public BackupFileDataPacket(int totalBytes, int bytesContained, int packetNumber,
-								int packetsTotal, Date dateTimeCaptured, String fileData, FileAction fileAction) {
+	public BackupFileDataPacket(Long fileBatchID, int totalBytes, int bytesContained, int packetNumber,
+								int packetsTotal, String fileDirectory, String fileName, String fileData, FileAction fileAction) {
 				
+		this.fileBatchID = fileBatchID;
 		this.totalBytes = totalBytes;
 		this.bytesContained = bytesContained;
 		this.packetNumber = packetNumber;		
 		this.packetsTotal = packetsTotal;
-		this.dateTimeCaptured = dateTimeCaptured;		
+		this.fileName = fileName;
+		this.fileDirectory = fileDirectory;
 		this.fileData = fileData;
 		this.fileAction = fileAction;
+	}
+	
+	public Long getFileBatchID() {
+		return fileBatchID;
 	}
 	
 	public int getPacketNumber() {
@@ -58,14 +64,6 @@ public class BackupFileDataPacket {
 
 	public void setPacketsTotal(int packetsTotal) {
 		this.packetsTotal = packetsTotal;
-	}
-
-	public Date getDateTimeCaptured() {
-		return dateTimeCaptured;
-	}
-
-	public void setDateTimeCaptured(Date dateTimeCaptured) {
-		this.dateTimeCaptured = dateTimeCaptured;
 	}
 
 	public String getFileData() {
@@ -108,13 +106,29 @@ public class BackupFileDataPacket {
 		this.fileAction = fileAction;
 	}
 	
+	public String getFileDirectory() {
+		return fileDirectory;
+	}
+
+	public void setFileDirectory(String fileDirectory) {
+		this.fileDirectory = fileDirectory;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
+	}
+	
 	@Override
 	public String toString() {
 		return String.format("BackupFileDataPacket[fileUpdateID=%d, totalBytes=%d, bytesContained=%d, "+
-								"packetNumber=%d, packetsTotal=%d, dateTimeCaptured=%s, fileAction=%s "+
+								"packetNumber=%d, packetsTotal=%d, fileDirectory=%s, fileName=%s, fileAction=%s "+
 								"fileData.length=%d]", 
 								fileUpdateID, totalBytes, bytesContained, packetNumber, packetsTotal, 
-								dateTimeCaptured.toString(), fileAction.toString(), fileData.length());
-	}
+								fileDirectory, fileName, fileAction, (fileData == null ? "null" : fileData.length()));
+	}	
 	 
 }
