@@ -1,7 +1,5 @@
 package com.nearskysolutions.cloudbackup.common;
 
-import java.util.Date;
-
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -11,7 +9,7 @@ import javax.persistence.Id;
 public class BackupFileDataPacket {
 	
 	@Id
-	@GeneratedValue(strategy=GenerationType.AUTO)
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long fileUpdateID;
 	private Long fileBatchID;	
 	private int totalBytes;

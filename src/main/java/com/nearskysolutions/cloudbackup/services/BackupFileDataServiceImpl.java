@@ -2,16 +2,21 @@ package com.nearskysolutions.cloudbackup.services;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.data.BackupFileClientRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataBatchRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
+import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
 
 @Component
 public class BackupFileDataServiceImpl implements BackupFileDataService {
@@ -23,6 +28,12 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	
 	@Autowired
 	private BackupFileDataBatchRepository batchRepo;
+	
+	@Autowired
+	private BackupFileClientRepository clientRepo;
+	
+	@Autowired
+	private BackupFileTrackerRepository trackerRepo;
 
 	@Override
 	public BackupFileDataPacket getPacketByFileUpdateID(Long fileUpdateID) throws Exception {
@@ -58,7 +69,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		if( dataPacket == null ) {
 			logger.error("Null BackupFileDataPacket passed as argument to BackupFileDataPacketServiceImpl.addBackupFileDataPacket");
 			
-			throw new NullPointerException("Backup file data packet can't b null");
+			throw new NullPointerException("Backup file data packet can't be null");
 		}
 		
 		BackupFileDataPacket retVal = packetRepo.save(dataPacket);
@@ -103,7 +114,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		if( fileDataBatch == null ) {
 			logger.error("Null BackupFileDataBatch passed as argument to BackupFileDataPacketServiceImpl.addBackupFileDataBatch");
 			
-			throw new NullPointerException("Backup file data batch can't b null");
+			throw new NullPointerException("Backup file data batch can't be null");
 		}
 		
 		BackupFileDataBatch retVal = batchRepo.save(fileDataBatch);
@@ -123,7 +134,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		if( createDateTime == null ) {
 			logger.error("Null create date passed as argument to BackupFileDataPacketServiceImpl.getBatchesCreatedAfter");
 			
-			throw new NullPointerException("Create datetime can't b null");
+			throw new NullPointerException("Create datetime can't be null");
 		}		
 
 		List<BackupFileDataBatch> retVal = null;
@@ -140,6 +151,183 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		return retVal;
 	}
 
+	@Override
+	public BackupFileClient addBackupClient(BackupFileClient backupClient) throws Exception {
+		
+		if( backupClient == null ) {
+			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.addBackupClient");
+			
+			throw new NullPointerException("Backup client data can't be null");
+		}
+		
+		BackupFileClient retVal = clientRepo.save(backupClient);
+		
+		logger.info("Backup client data saved to repository");
+		
+		return retVal;
+	}
+
+	@Override
+	public void updateBackupClient(BackupFileClient backupClient) throws Exception {
+		if( backupClient == null ) {
+			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.updateBackupClient");
+			
+			throw new NullPointerException("Backup client data can't be null");
+		}
+		
+		if(backupClient.getClientID() == null) {
+			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.updateBackupClient");
+			
+			throw new NullPointerException("Backup client UUID can't be null");
+		}
+		
+		if( false == clientRepo.exists(backupClient.getClientID())) {
+			logger.error("Unknown client ID (%s) passed to to BackupFileDataPacketServiceImpl.updateBackupClient", backupClient.getClientID());
+			
+			throw new Exception("Backup client UUID not found");
+		}
+		
+		clientRepo.save(backupClient);
+		
+		logger.info("Backup client data updated in repository");	
 	
+		
+	}
+	
+	@Override
+	public BackupFileClient getBackupClientByUUID(UUID clientID) throws Exception {
+				
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s", 
+						clientID));
+
+		if( clientID == null ) {
+			logger.error("Null clientID passed as argument to BackupFileDataPacketServiceImpl.getBackupClientByUUID");
+			
+			throw new NullPointerException("Client ID can't be null");
+		}
+		
+		logger.info(String.format("Query for BackupFileClient with client ID = %s", clientID));
+		
+		BackupFileClient retVal;
+		List<BackupFileClient> clientList = clientRepo.findByClientID(clientID);
+		
+		if( 0 == clientList.size() ) {
+			retVal = null;
+		} else if( 1 == clientList.size() ) {
+			retVal = clientList.get(0);
+		} else { //clientList.size() > 1
+			throw new Exception(String.format("Invalid count returned for clientID=%s, expected: 1, received: %d", 
+												clientID, clientList.size()));
+		}
+		
+		logger.info(String.format("Backup client %sfound for ID = %s",((retVal == null) ? "not " : ""), clientID));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s with return: %s",
+									clientID, retVal));
+		
+		return retVal;
+	}
+
+	@Override
+	public List<BackupFileClient> getAllBackupClients() {
+		logger.trace("In BackupFileDataPacketServiceImpl.getAllBackupClients()");
+
+		logger.info(String.format("Query for all BackupFileClient instances"));
+		
+		List<BackupFileClient> retVal = clientRepo.findAllByOrderByClientNameAsc();
+					
+		logger.info(String.format("Query found %d backup clients",retVal.size()));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getAllBackupClients(): client list size=%d", retVal.size()));
+									
+		
+		return retVal;
+	}
+
+	@Override
+	public BackupFileTracker addBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
+		if( fileTracker == null ) {
+			logger.error("Null BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.addBackupFileTracker");
+			
+			throw new NullPointerException("Backup file tracker data can't be null");
+		}
+		
+		BackupFileTracker retVal = trackerRepo.save(fileTracker);
+		
+		logger.info("Backup file tracker saved to repository");
+		
+		return retVal;
+	}
+
+	@Override
+	public void updateBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
+		
+		if( fileTracker == null ) {
+			logger.error("Null BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.updateBackupFileTracker");
+			
+			throw new NullPointerException("Backup file tracker data can't be null");
+		}
+		
+		if(fileTracker.getBackupFileTrackerID() == null || fileTracker.getBackupFileTrackerID() <= 0) {
+			logger.error("Null or invalid BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.updateBackupFileTracker");
+			
+			throw new NullPointerException("Backup client UUID can't be null");
+		}
+		
+		if( false == trackerRepo.exists(fileTracker.getBackupFileTrackerID())) {
+			logger.error("Unknown BackupFileTrackerID (%d) passed to to BackupFileDataPacketServiceImpl.updateBackupFileTracker", 
+							fileTracker.getBackupFileTrackerID());
+			
+			throw new Exception("Backup file tracker ID not found");
+		}
+		
+		trackerRepo.save(fileTracker);
+		
+		logger.info("Backup file tracker data updated in repository");	
+		
+	}
+
+	@Override
+	public List<BackupFileTracker> getAllBackupTrackersForClient(UUID clientID) {
+		
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getAllBackupTrackersForClient(UUID client)", clientID));
+
+		if( clientID == null ) {
+			logger.error("Null clientID passed as argument to BackupFileDataPacketServiceImpl.getAllBackupTrackersForClient");
+			
+			throw new NullPointerException("Client ID can't be null");
+		}
+		
+		logger.info(String.format("Query for all BackupFileTracker instances for client = %s", clientID));
+		
+		List<BackupFileTracker> retVal = trackerRepo.findByClientID(clientID);
+					
+		logger.info(String.format("Query found %d backup file trackers",retVal.size()));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getAllBackupTrackersForClient(): file tracker list size=%d", retVal.size()));
+		
+		return retVal;
+	}
+
+	@Override
+	public List<BackupFileTracker> getActiveBackupTrackersForClient(UUID clientID) {
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(UUID client)", clientID));
+
+		if( clientID == null ) {
+			logger.error("Null clientID passed as argument to BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient");
+			
+			throw new NullPointerException("Client ID can't be null");
+		}
+		
+		logger.info(String.format("Query for all BackupFileTracker instances for client = %s", clientID));
+		
+		List<BackupFileTracker> retVal = trackerRepo.findByClientIDActiveFilesOnly(clientID);
+					
+		logger.info(String.format("Query found %d backup file trackers",retVal.size()));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(): file tracker list size=%d", retVal.size()));
+		
+		return retVal;
+	}	
 	
 }
