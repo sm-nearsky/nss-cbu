@@ -21,14 +21,6 @@ public interface BackupFileDataService {
 	
 	BackupFileDataBatch getDataBatchByBatchID(Long batchUpdateID) throws Exception;
 	
-	BackupFileClient addBackupClient(BackupFileClient backupClient) throws Exception;
-	
-	void updateBackupClient(BackupFileClient backupClient) throws Exception;
-	
-	BackupFileClient getBackupClientByUUID(UUID clientID) throws Exception;
-	
-	List<BackupFileClient> getAllBackupClients();
-	
 	BackupFileTracker addBackupFileTracker(BackupFileTracker fileTracker) throws Exception;
 	
 	void updateBackupFileTracker(BackupFileTracker fileTracker) throws Exception;

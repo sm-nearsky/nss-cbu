@@ -12,5 +12,7 @@ public interface BackupFileClientRepository extends CrudRepository<BackupFileCli
 	List<BackupFileClient> findByClientID(UUID clientID);	
 	
 	List<BackupFileClient> findAllByOrderByClientNameAsc();
+	
+	List<String> findDirectoryIncludesByClientID(UUID clientID);
 
 }

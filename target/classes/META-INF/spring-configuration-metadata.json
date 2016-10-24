@@ -1,27 +1,13 @@
 {
-  "groups": [
-    {
-      "name": "cloudBackupClient",
-      "type": "com.nearskysolutions.cloudbackup.test.CloudBackupClientTestConfig",
-      "sourceType": "com.nearskysolutions.cloudbackup.test.CloudBackupClientTestConfig"
-    },
-    {
-      "name": "cloudBackupClient",
-      "type": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
-      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
-    }
-  ],
-  "properties": [
-    {
-      "name": "cloudBackupClient.test-value",
-      "type": "java.lang.String",
-      "sourceType": "com.nearskysolutions.cloudbackup.test.CloudBackupClientTestConfig"
-    },
-    {
-      "name": "cloudBackupClient.test-value",
-      "type": "java.lang.String",
-      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
-    }
-  ],
+  "groups": [{
+    "name": "com.nearskysolutions.cloudbackup.client",
+    "type": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+    "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
+  }],
+  "properties": [{
+    "name": "com.nearskysolutions.cloudbackup.client.packet-staging-dir",
+    "type": "java.lang.String",
+    "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
+  }],
   "hints": []
 }

@@ -1,20 +1,23 @@
 package com.nearskysolutions.cloudbackup.client;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "cloudBackupClient")
+@ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.client")
+@PropertySource({"classpath:persistence-${env}.properties",	
+				 "classpath:application.properties"})
 public class CloudBackupClientConfig {
 
-	private String testValue;
+	private String packetStagingDir;
 
-	public String getTestValue() {
-		return testValue;
+	public String getPacketStagingDir() {
+		return packetStagingDir;
 	}
 
-	public void setTestValue(String testValue) {
-		this.testValue = testValue;
+	public void setPacketStagingDir(String packetStagingDir) {
+		this.packetStagingDir = packetStagingDir;
 	}
 	
 	

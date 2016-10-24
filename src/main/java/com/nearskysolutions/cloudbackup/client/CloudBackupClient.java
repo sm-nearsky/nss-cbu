@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SpringBootApplication
-@ComponentScan(basePackages="com.nearskysolutions.cloudbackup.client,com.nearskysolutions.cloudbackup.services")
+@ComponentScan(basePackages="com.nearskysolutions.cloudbackup")
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
 @EntityScan("com.nearskysolutions.cloudbackup.common")
 public class CloudBackupClient  implements CommandLineRunner {
