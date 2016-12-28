@@ -13,7 +13,7 @@ public interface BackupFileDataService {
 	
 	BackupFileDataPacket addBackupFileDataPacket(BackupFileDataPacket dataPacket) throws Exception;
 	
-	BackupFileDataPacket getPacketByFileUpdateID(Long fileUpdateID) throws Exception;
+	BackupFileDataPacket getPacketByFileDataPacketID(Long dataPacketID) throws Exception;
 	
 	BackupFileDataBatch addBackupFileDataBatch(BackupFileDataBatch dataBatch) throws Exception;
 	

@@ -9,8 +9,9 @@ import org.springframework.stereotype.Component;
 @PropertySource({"classpath:persistence-${env}.properties",	
 				 "classpath:application.properties"})
 public class CloudBackupClientConfig {
-
+	
 	private String packetStagingDir;
+	private int filePacketSize;
 
 	public String getPacketStagingDir() {
 		return packetStagingDir;
@@ -19,6 +20,13 @@ public class CloudBackupClientConfig {
 	public void setPacketStagingDir(String packetStagingDir) {
 		this.packetStagingDir = packetStagingDir;
 	}
-	
+
+	public int getFilePacketSize() {
+		return filePacketSize;
+	}
+
+	public void setFilePacketSize(int filePacketSize) {
+		this.filePacketSize = filePacketSize;
+	}
 	
 }

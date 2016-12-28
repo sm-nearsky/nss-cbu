@@ -1,23 +1,43 @@
 package com.nearskysolutions.cloudbackup.common;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 @Entity
+@Table(name="backup_file_data_packet")
 public class BackupFileDataPacket {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	private Long fileUpdateID;
-	private Long fileBatchID;	
+	@Column(name="data_packet_id")
+	private Long dataPacketID;
+	
+	@Column(name="file_batch_id")
+	private Long fileBatchID;
+	
+	@Column(name="total_bytes")
 	private int totalBytes;
+	
+	@Column(name="bytes_contained")
 	private int bytesContained;
-	private int packetNumber;	
+	
+	@Column(name="packet_number")
+	private int packetNumber;
+	
+	@Column(name="packets_total")
 	private int packetsTotal;
+	
+	@Column(name="file_directory")
 	private String fileDirectory;
+	
+	@Column(name="file_name")
 	private String fileName;
+	
+	@Column(name="file_data")
 	private String fileData;
 	
 	public enum FileAction {
@@ -26,6 +46,7 @@ public class BackupFileDataPacket {
 		Delete,				
 	}
 	
+	@Column(name="file_action")
 	private FileAction fileAction;
 	
 	protected BackupFileDataPacket() { }
@@ -44,8 +65,16 @@ public class BackupFileDataPacket {
 		this.fileAction = fileAction;
 	}
 	
+	public Long getDataPacketID() {
+		return dataPacketID;
+	}
+
 	public Long getFileBatchID() {
 		return fileBatchID;
+	}
+	
+	public void setFileBatchID(Long fileBatchID) {
+		this.fileBatchID = fileBatchID;
 	}
 	
 	public int getPacketNumber() {
@@ -70,14 +99,6 @@ public class BackupFileDataPacket {
 
 	public void setFileData(String fileData) {
 		this.fileData = fileData;
-	}	
-
-	public Long getFileUpdateID() {
-		return fileUpdateID;
-	}
-
-	public void setFileUpdateID(Long fileUpdateID) {
-		this.fileUpdateID = fileUpdateID;
 	}
 
 	public double getTotalBytes() {
@@ -122,10 +143,10 @@ public class BackupFileDataPacket {
 	
 	@Override
 	public String toString() {
-		return String.format("BackupFileDataPacket[fileUpdateID=%d, totalBytes=%d, bytesContained=%d, "+
+		return String.format("BackupFileDataPacket[dataPacketID=%d, totalBytes=%d, bytesContained=%d, "+
 								"packetNumber=%d, packetsTotal=%d, fileDirectory=%s, fileName=%s, fileAction=%s "+
 								"fileData.length=%d]", 
-								fileUpdateID, totalBytes, bytesContained, packetNumber, packetsTotal, 
+								dataPacketID, totalBytes, bytesContained, packetNumber, packetsTotal, 
 								fileDirectory, fileName, fileAction, (fileData == null ? "null" : fileData.length()));
 	}	
 	 

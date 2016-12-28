@@ -4,22 +4,29 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.PrePersist;
+import javax.persistence.Table;
 
 @Entity
+@Table(name="backup_file_data_batch")
 public class BackupFileDataBatch {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	private Long fileBatchID;	
+	private Long fileBatchID;
+	
+	@Column(name="client_id", columnDefinition = "BINARY(16)")
 	private UUID clientID;
-	@GeneratedValue(strategy=GenerationType.AUTO)
+	
+	@Column(name="date_time_captured")
 	private Date dateTimeCaptured;	
+	
 	@ElementCollection
 	private List<String> fileList;
 		

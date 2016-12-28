@@ -4,10 +4,17 @@
     "type": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
     "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
   }],
-  "properties": [{
-    "name": "com.nearskysolutions.cloudbackup.client.packet-staging-dir",
-    "type": "java.lang.String",
-    "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
-  }],
+  "properties": [
+    {
+      "name": "com.nearskysolutions.cloudbackup.client.file-packet-size",
+      "type": "java.lang.Integer",
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
+    },
+    {
+      "name": "com.nearskysolutions.cloudbackup.client.packet-staging-dir",
+      "type": "java.lang.String",
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
+    }
+  ],
   "hints": []
 }

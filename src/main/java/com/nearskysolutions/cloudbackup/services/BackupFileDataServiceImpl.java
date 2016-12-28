@@ -36,15 +36,15 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	private BackupFileTrackerRepository trackerRepo;
 
 	@Override
-	public BackupFileDataPacket getPacketByFileUpdateID(Long fileUpdateID) throws Exception {
+	public BackupFileDataPacket getPacketByFileDataPacketID(Long dataPacketID) throws Exception {
 		
-		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getPacketByFileUpdateID(Long fileUpdateID): fileUpdateID=%d", 
-						fileUpdateID));
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getPacketByFileDataPacketID(Long fileUpdateID): fileUpdateID=%d", 
+										dataPacketID));
 		
-		logger.info(String.format("Query for BackupFileDataPacket with update ID = %d", fileUpdateID));
+		logger.info(String.format("Query for BackupFileDataPacket with update ID = %d", dataPacketID));
 		
 		BackupFileDataPacket retVal;
-		List<BackupFileDataPacket> packetList = packetRepo.findByFileUpdateID(fileUpdateID);
+		List<BackupFileDataPacket> packetList = packetRepo.findByDataPacketID(dataPacketID);
 		
 		if( 0 == packetList.size() ) {
 			retVal = null;
@@ -52,13 +52,13 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			retVal = packetList.get(0);
 		} else { //packetList.size() > 1
 			throw new Exception(String.format("Invalid count returned for fileUpdateID=%d, expected: 1, received: %d", 
-												fileUpdateID, packetList.size()));
+												dataPacketID, packetList.size()));
 		}
 		
-		logger.info(String.format("Data packet %sfound for ID = %d",((retVal == null) ? "not " : ""), fileUpdateID));
+		logger.info(String.format("Data packet %sfound for ID = %d",((retVal == null) ? "not " : ""), dataPacketID));
 		
-		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getPacketByFileUpdateID(Long fileUpdateID): fileUpdateID=%d with return: %s",
-									fileUpdateID, retVal));
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getPacketByFileDataPacketID(Long fileUpdateID): fileUpdateID=%d with return: %s",
+										dataPacketID, retVal));
 		
 		return retVal;
 	}
@@ -141,7 +141,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		
 		logger.info(String.format("Query for BackupFileDataBatch with create date > = %s", createDateTime));
 
-		retVal = batchRepo.findAfterCaptureDateTime(createDateTime);
+		retVal = batchRepo.findByDateTimeCapturedAfter(createDateTime);
 				
 		logger.info(String.format("%d data batches found with create date > %s", retVal.size(), createDateTime));
 		
@@ -158,6 +158,13 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			
 			throw new NullPointerException("Backup file tracker data can't be null");
 		}
+		if( fileTracker.getClientID() == null ) {
+			logger.error("Null ClientID passed within BackupFileTracker to BackupFileDataPacketServiceImpl.addBackupFileTracker");
+			
+			throw new NullPointerException("Client ID within backup file tracker data can't be null");
+		}
+		
+		//TODO: Don't allow duplicate file tracking
 		
 		BackupFileTracker retVal = trackerRepo.save(fileTracker);
 		
@@ -186,7 +193,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 							fileTracker.getBackupFileTrackerID());
 			
 			throw new Exception("Backup file tracker ID not found");
-		}
+		}		
 		
 		trackerRepo.save(fileTracker);
 		
@@ -228,13 +235,12 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		
 		logger.info(String.format("Query for all BackupFileTracker instances for client = %s", clientID));
 		
-		List<BackupFileTracker> retVal = trackerRepo.findByClientIDActiveFilesOnly(clientID);
+		List<BackupFileTracker> retVal = trackerRepo.findByClientIDAndIsFileDeletedFalse(clientID);
 					
 		logger.info(String.format("Query found %d backup file trackers",retVal.size()));
 		
 		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(): file tracker list size=%d", retVal.size()));
 		
 		return retVal;
-	}	
-	
+	}		
 }

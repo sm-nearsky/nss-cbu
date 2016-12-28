@@ -5,8 +5,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,19 +20,14 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nearskysolutions.cloudbackup.client.CloudBackupClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
-import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
-import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = CloudBackupClientTestConfig.class)
 @Transactional
 public class BackupFileClientServiceTest {
 
-Logger logger = LoggerFactory.getLogger(CloudBackupClient.class);
+Logger logger = LoggerFactory.getLogger(BackupFileClientServiceTest.class);
 	
 	@Autowired	
 	private BackupFileClientService clientSvc;
@@ -73,9 +66,9 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClient.class);
 		List<String> directoryList = new ArrayList<String>();
 		directoryList.add("/C/Files");
 		directoryList.add("/D/MoreFiles");
-		
-		BackupFileClient backupClient1 = new BackupFileClient("abc", "test 1", "type 1", "loc 1", "key 1", directoryList);
-		BackupFileClient backupClient2 = new BackupFileClient("xyz", "test 2", "type 2", "loc 2", "key 2", directoryList);
+				
+		BackupFileClient backupClient1 = new BackupFileClient("Test Client " + UUID.randomUUID().toString(), "test 1", "type 1", "loc 1", "key 1", directoryList);
+		BackupFileClient backupClient2 = new BackupFileClient("Test Client " + UUID.randomUUID().toString(), "test 2", "type 2", "loc 2", "key 2", directoryList);
 						
 		try {
 			
@@ -86,8 +79,15 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClient.class);
 			List<BackupFileClient> clientList = clientSvc.getAllBackupClients();
 			
 			assertNotNull(clientList);
-			assertEquals(2, clientList.size());
-			assertEquals(backupClient1.getClientName(), clientList.get(0).getClientName());
+			assertTrue(clientList.size() >= 2);
+			
+			boolean foundClient = false;
+			
+			for(BackupFileClient client : clientList) {
+				foundClient = (foundClient || client.getClientName().equals(backupClient1.getClientName()));
+			}
+			
+			assertTrue(foundClient);
 			
 		} catch (Exception e) {
 		
