@@ -1,34 +1,24 @@
 package com.nearskysolutions.cloudbackup.client;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.DosFileAttributes;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Base64;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Base64Utils;
 
-import com.nearskysolutions.cloudbackup.common.BackupFileAttributes;
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
-import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.services.FileHandlerService;
@@ -46,6 +36,22 @@ public class TestRunClass {
 	
 	@Autowired 
 	private BackupFileClientService clientSvc;
+	
+	public void RunTest1() {
+		
+		String outputFile = "C:\\tmp\\testOutput.gz";
+		
+		List<String> packetFileList = new ArrayList<String>();
+		packetFileList.add("C:\\tmp\\nssCbuPacketQueue\\batch4_packet1_number1.xml");
+		packetFileList.add("C:\\tmp\\nssCbuPacketQueue\\batch4_packet2_number2.xml");
+		
+		try {
+			this.recreatePacketFileData(packetFileList, outputFile);
+		} catch (Exception e) {			
+			e.printStackTrace();
+		}
+		
+	}
 	
 	public void RunTest() {
 	
@@ -67,36 +73,45 @@ public class TestRunClass {
 		List<BackupFileClient> lstClients = clientSvc.getAllBackupClients();
 		
 		BackupFileClient client = lstClients.get(0);		
-		
-		try {
-//			logger.info("Got client with " + client.getDirectoryIncludes().size() + " includes");
-//			
-//			for(String dir : client.getDirectoryIncludes()) {
-//				logger.info("Scanning for dir: " + dir);
-//				List<File> files = fileHandlerSvc.scanFilesForDirectory(dir);
-//								
-//				for(File f : files) {
-//					if( f.getAbsolutePath().indexOf("pom.xml") > 0 || f.getAbsolutePath().indexOf("zerotest.txt") > 0) {
-////						fileHandlerSvc.storePacketsForFile(f);
-//						
-//						//TODO make this configurable in final form
-//						DosFileAttributes  attr = (DosFileAttributes)Files.readAttributes(Paths.get(f.getAbsolutePath()), DosFileAttributes .class); 
-//													
-//						BackupFileTracker bft = new BackupFileTracker(client.getClientID(),
-//								"test repo type",
-//								"test repo loc",
-//								"test repo key",
-//								f.getAbsolutePath()
-//								); 
-//						
-//						dataSvc.addBackupFileTracker(bft);
-//					}
-//					logger.info(f.getAbsolutePath() + " " + f.isDirectory());
-//				}				
-//				
-//				logger.info("Total files: " + files.size());
-//			}
 			
+		try {
+//			List<String> directoryIncludes = new ArrayList<String>();
+//			directoryIncludes.add("C:\\tmp\\backupfileset1");
+//			directoryIncludes.add("C:\\tmp\\backupfileset2");
+//			client.setDirectoryIncludes(directoryIncludes);
+//			
+//			clientSvc.updateBackupClient(client);
+			
+			logger.info("Got client with " + client.getDirectoryIncludes().size() + " includes");
+			
+			List<BackupFileTracker> lstTrackers = new ArrayList<BackupFileTracker>();
+			
+			for(String directory : client.getDirectoryIncludes()) {			
+				lstTrackers.addAll(fileHandlerSvc.updateFileTrackerListing(client.getClientID(), directory, "TestRepoType", "TestRepoLoc", "TestRepoKey"));
+			}	
+					
+			BackupFileDataBatch fileBatch = null;
+			int trackerCount = 0;
+			
+			for(BackupFileTracker tracker : lstTrackers) {
+				if( tracker.isFileChanged() ) {
+					if( fileBatch == null ) {
+						fileBatch = this.dataSvc.addBackupFileDataBatch(new BackupFileDataBatch(client.getClientID()));
+					}
+					
+					fileHandlerSvc.createPacketsForFile(fileBatch, tracker);
+					
+					trackerCount += 1;
+				}
+			}								
+			
+			if( fileBatch == null ) {
+				logger.info("No changes detected, no batch sent");
+			} else {
+				
+				fileHandlerSvc.sendBatchToProcessingQueue(fileBatch);
+				logger.info("Batch sent with tracker count: " + trackerCount);
+			}		
 			
 		} catch (Exception e) {			
 			e.printStackTrace();
@@ -142,5 +157,46 @@ public class TestRunClass {
 //			e.printStackTrace();
 //		}        
 
+	}
+	
+	private void recreatePacketFileData(List<String> packetFileList, String outputFile) throws Exception {
+		
+		FileInputStream fis = null;
+		FileOutputStream fos = null;
+		
+		try {
+			
+			ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+			
+			for(String filePath : packetFileList) {
+			
+				logger.info("Reading file: " + filePath);
+				
+				fis = new FileInputStream(filePath);
+				
+				JAXBContext jc = JAXBContext.newInstance( BackupFileDataPacket.class );
+				Unmarshaller um = jc.createUnmarshaller();
+				BackupFileDataPacket packet = (BackupFileDataPacket)um.unmarshal(fis);
+				
+				String packetData = packet.getFileData();
+				
+				byteStream.write(Base64.getDecoder().decode(packetData));				
+			}			
+									
+			fos = new FileOutputStream(outputFile);
+				
+			fos.write(byteStream.toByteArray());
+			
+		}finally {
+			if( null != fis) {
+				fis.close();				
+			}
+			
+			if( null != fos) {
+				fos.close();				
+			}
+		}
+		
+		
 	}
 }

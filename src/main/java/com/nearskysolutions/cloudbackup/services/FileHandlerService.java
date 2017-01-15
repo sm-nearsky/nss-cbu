@@ -1,13 +1,25 @@
 package com.nearskysolutions.cloudbackup.services;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+
 public interface FileHandlerService {
 			
-	void updateFileTrackerListing(UUID clientID, String rootDir) throws IOException;
+	List<BackupFileTracker> updateFileTrackerListing(UUID clientID, 
+														 String rootDir,
+														 String repoType,
+														 String repoLoc,
+														 String repoKey) throws Exception;
 	
-	void storePacketsForFile(File file) throws Exception;
+	List<BackupFileDataPacket> createPacketsForFile(BackupFileDataBatch fileBatch, BackupFileTracker fileTracker) throws Exception;
+	
+	void sendBatchToProcessingQueue(BackupFileDataBatch fileBatch) throws Exception;
+	
+	List<BackupFileDataPacket> retrieveBatchFromProcessingQueue(Long batchID) throws Exception;
+	
+	void removeBatchFromProcessingQueue(Long batchID) throws Exception;
 }

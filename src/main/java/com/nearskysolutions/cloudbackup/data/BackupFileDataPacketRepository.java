@@ -9,5 +9,7 @@ import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 public interface BackupFileDataPacketRepository extends CrudRepository<BackupFileDataPacket, Long> {
 
 	List<BackupFileDataPacket> findByDataPacketID(Long dataPacketID);	
+	
+	List<BackupFileDataPacket> findByFileBatchID(Long dataBatchID);
 
 }

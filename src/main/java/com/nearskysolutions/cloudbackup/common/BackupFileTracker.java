@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.attribute.DosFileAttributes;
-import java.util.Date;
 import java.util.UUID;
 
 import javax.persistence.CascadeType;
@@ -54,6 +53,9 @@ public class BackupFileTracker {
 	@Transient
 	private boolean isFileChanged;
 	
+	@Transient
+	private boolean isFileNew;
+	
 	protected BackupFileTracker() { }
 	
 	public BackupFileTracker(UUID clientID,							 
@@ -93,9 +95,9 @@ public class BackupFileTracker {
 		//TODO make this configurable
 		DosFileAttributes  attr = (DosFileAttributes)Files.readAttributes(Paths.get(sourceFile.getAbsolutePath()), DosFileAttributes .class); 
 				
-		this.fileAttributes = new BackupFileAttributes(new Date(attr.creationTime().toMillis()), 
-														  new Date(attr.lastModifiedTime().toMillis()), 
-														  new Date(attr.lastAccessTime().toMillis()), 
+		this.fileAttributes = new BackupFileAttributes(attr.creationTime().toMillis(), 
+														  attr.lastModifiedTime().toMillis(), 
+														  attr.lastAccessTime().toMillis(), 
 														  attr.size(), 
 														  attr.isRegularFile(), 
 														  attr.isDirectory(), 
@@ -187,16 +189,20 @@ public class BackupFileTracker {
 		this.fileAttributes = fileAttributes;
 	}	
 	
-	public String getFullPath() {
-	
-		if( this.isDirectory() ) {
-			return this.getSourceDirectory();
+	public File getFileReference() {
+		
+		String pathName;
+		
+		if( this.isDirectory() ) { 
+			pathName = this.getSourceDirectory();
 		} else {
-			return String.format("%s%s%s", 
+			pathName = String.format("%s%s%s", 
 								 this.getSourceDirectory(),
 								 File.separator,
 								 this.getFileName());
 		}
+		
+		return new File(pathName);
 	}
 	
 	@Override
@@ -215,6 +221,14 @@ public class BackupFileTracker {
 	public void setFileChanged(boolean isFileChanged) {
 		this.isFileChanged = isFileChanged;
 	}
+	
+	public boolean isFileNew() {
+		return isFileNew;
+	}
+
+	public void setFileNew(boolean isFileNew) {
+		this.isFileNew = isFileNew;
+	}
 
 	public boolean equalsFile(File compareFile) throws IOException {
 
@@ -229,9 +243,9 @@ public class BackupFileTracker {
 			DosFileAttributes  attr = (DosFileAttributes)Files.readAttributes(Paths.get(compareFile.getAbsolutePath()), DosFileAttributes .class); 
 
 			filesEqual = 
-					(new Date(attr.creationTime().toMillis())).equals(this.getFileAttributes().getFileCreatedDateTime()) &&
-					(new Date(attr.lastModifiedTime().toMillis())).equals(this.getFileAttributes().getFileModifiedDateTime()) &&
-					(new Date(attr.lastAccessTime().toMillis())).equals(this.getFileAttributes().getFileAccessDateTime()) &&
+					(attr.creationTime().toMillis() == this.getFileAttributes().getFileCreatedDateTimeMillis()) &&
+					(attr.lastModifiedTime().toMillis() == this.getFileAttributes().getFileModifiedDateTimeMillis()) &&
+					(attr.lastAccessTime().toMillis() == this.getFileAttributes().getFileAccessDateTimeMillis()) &&
 					attr.size() == this.getFileAttributes().getFileSize() &&
 					attr.size() == this.getFileAttributes().getFileSize() &&
 					attr.isRegularFile() == this.getFileAttributes().isRegularFile() &&
@@ -258,6 +272,6 @@ public class BackupFileTracker {
 		}										
 					
 		return filesEqual;
-	}
+	}	
 	
 }

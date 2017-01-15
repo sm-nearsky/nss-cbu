@@ -1,14 +1,22 @@
 package com.nearskysolutions.cloudbackup.common;
 
+import java.io.File;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
 
 @Entity
 @Table(name="backup_file_data_packet")
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
 public class BackupFileDataPacket {
 	
 	@Id
@@ -19,8 +27,8 @@ public class BackupFileDataPacket {
 	@Column(name="file_batch_id")
 	private Long fileBatchID;
 	
-	@Column(name="total_bytes")
-	private int totalBytes;
+	@Column(name="file_tracker_id")
+	private Long fileTrackerID;
 	
 	@Column(name="bytes_contained")
 	private int bytesContained;
@@ -37,9 +45,6 @@ public class BackupFileDataPacket {
 	@Column(name="file_name")
 	private String fileName;
 	
-	@Column(name="file_data")
-	private String fileData;
-	
 	public enum FileAction {
 		Create,
 		Update,
@@ -49,19 +54,24 @@ public class BackupFileDataPacket {
 	@Column(name="file_action")
 	private FileAction fileAction;
 	
+	@Transient
+	private String fileData;
+	
+	@Transient
+	private File fileRef;
+	
 	protected BackupFileDataPacket() { }
 	
-	public BackupFileDataPacket(Long fileBatchID, int totalBytes, int bytesContained, int packetNumber,
-								int packetsTotal, String fileDirectory, String fileName, String fileData, FileAction fileAction) {
+	public BackupFileDataPacket(Long fileBatchID, Long fileTrackerID, int bytesContained, int packetNumber,
+								int packetsTotal, String fileDirectory, String fileName, FileAction fileAction) {
 				
 		this.fileBatchID = fileBatchID;
-		this.totalBytes = totalBytes;
+		this.fileTrackerID = fileTrackerID;
 		this.bytesContained = bytesContained;
 		this.packetNumber = packetNumber;		
 		this.packetsTotal = packetsTotal;
 		this.fileName = fileName;
-		this.fileDirectory = fileDirectory;
-		this.fileData = fileData;
+		this.fileDirectory = fileDirectory;		
 		this.fileAction = fileAction;
 	}
 	
@@ -101,12 +111,12 @@ public class BackupFileDataPacket {
 		this.fileData = fileData;
 	}
 
-	public double getTotalBytes() {
-		return totalBytes;
+	public Long getFileTrackerID() {
+		return fileTrackerID;
 	}
 
-	public void setTotalBytes(int totalBytes) {
-		this.totalBytes = totalBytes;
+	public void setFileTrackerID(Long trackerID) {
+		this.fileTrackerID = trackerID;
 	}
 
 	public int getBytesContained() {
@@ -131,6 +141,8 @@ public class BackupFileDataPacket {
 
 	public void setFileDirectory(String fileDirectory) {
 		this.fileDirectory = fileDirectory;
+		
+		this.fileRef = null;
 	}
 
 	public String getFileName() {
@@ -139,15 +151,25 @@ public class BackupFileDataPacket {
 
 	public void setFileName(String fileName) {
 		this.fileName = fileName;
+		
+		this.fileRef = null;
+	}
+	
+	public File getFileReference() {		
+		if(null == fileRef) {
+			fileRef = new File(String.format("%s%s%s", this.getFileDirectory(), File.separator, this.getFileName()));
+		}
+		
+		return fileRef;
 	}
 	
 	@Override
 	public String toString() {
-		return String.format("BackupFileDataPacket[dataPacketID=%d, totalBytes=%d, bytesContained=%d, "+
+		return String.format("BackupFileDataPacket[dataPacketID=%d, fileTrackerID=%d, bytesContained=%d, "+
 								"packetNumber=%d, packetsTotal=%d, fileDirectory=%s, fileName=%s, fileAction=%s "+
 								"fileData.length=%d]", 
-								dataPacketID, totalBytes, bytesContained, packetNumber, packetsTotal, 
-								fileDirectory, fileName, fileAction, (fileData == null ? "null" : fileData.length()));
+								dataPacketID, fileTrackerID, bytesContained, packetNumber, packetsTotal, 
+								fileDirectory, fileName, fileAction, (fileData == null ? 0 : fileData.length()));
 	}	
 	 
 }

@@ -1,11 +1,9 @@
 package com.nearskysolutions.cloudbackup.common;
 
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
 import javax.persistence.Column;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -25,16 +23,18 @@ public class BackupFileDataBatch {
 	private UUID clientID;
 	
 	@Column(name="date_time_captured")
-	private Date dateTimeCaptured;	
+	private Date dateTimeCaptured;
 	
-	@ElementCollection
-	private List<String> fileList;
+	@Column(name="date_time_sent")
+	private Date dateTimeSent;
+	
+	@Column(name="date_time_confirmed")
+	private Date dateTimeConfirmed;
 		
 	protected BackupFileDataBatch() { }
 	
-	public BackupFileDataBatch(UUID clientID, List<String> fileList) {				
-		this.clientID = clientID;		
-		this.fileList = fileList;
+	public BackupFileDataBatch(UUID clientID) {				
+		this.clientID = clientID;
 	}
 
 	public Long getFileBatchID() {
@@ -48,14 +48,6 @@ public class BackupFileDataBatch {
 	public void setClientID(UUID clientID) {
 		this.clientID = clientID;
 	}
-		
-	public List<String> getFileList() {
-		return fileList;
-	}
-
-	public void setFileList(List<String> fileList) {
-		this.fileList = fileList;
-	}	
 
 	public Date getDateTimeCaptured() {
 		return dateTimeCaptured;
@@ -70,8 +62,24 @@ public class BackupFileDataBatch {
 	
 	@Override
 	public String toString() {
-		return String.format("BackupFileDataBatch[clientID=%s, dateTimeCaptured=%s, fileList.size()=%s]",
-								clientID, dateTimeCaptured, (fileList == null ? "null" : fileList.size()));
+		return String.format("BackupFileDataBatch[clientID=%s, dateTimeCaptured=%s]",
+								clientID, dateTimeCaptured);
+	}
+
+	public Date getDateTimeSent() {
+		return dateTimeSent;
+	}
+
+	public void setDateTimeSent(Date dateTimeSent) {
+		this.dateTimeSent = dateTimeSent;
+	}
+
+	public Date getDateTimeConfirmed() {
+		return dateTimeConfirmed;
+	}
+
+	public void setDateTimeConfirmed(Date dateTimeConfirmed) {
+		this.dateTimeConfirmed = dateTimeConfirmed;
 	}
 	
 		 

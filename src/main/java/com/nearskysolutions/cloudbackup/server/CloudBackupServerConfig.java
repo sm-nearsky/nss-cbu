@@ -1,56 +1,35 @@
-package com.nearskysolutions.cloudbackup.client;
-
-import java.util.UUID;
+package com.nearskysolutions.cloudbackup.server;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
 @Component
-@ComponentScan(basePackages="com.nearskysolutions.cloudbackup.client,"+
+@ComponentScan(basePackages="com.nearskysolutions.cloudbackup.server,"+
 							"com.nearskysolutions.cloudbackup.common,"+
 							"com.nearskysolutions.cloudbackup.data,"+
 							"com.nearskysolutions.cloudbackup.services,"+
 							"com.nearskysolutions.cloudbackup.prod.beans")
-@ImportResource("classpath:bean-config.xml")
-@ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.client")
+@ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.server")
 @PropertySource({"classpath:persistence-${env}.properties",	
-				 "classpath:application-client-${env}.properties"})
-public class CloudBackupClientConfig {
-		
+				 "classpath:application-server.properties"})
+public class CloudBackupServerConfig {
+	
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
-	private String packetStagingDir;
-	private UUID clientId;
 	private String repoType;
 	private String repoLoc;
 	private String repoKey;
+	private String fileStorageRootDir;
 	
-	public String getPacketStagingDir() {
-		return packetStagingDir;
-	}
-
-	public void setPacketStagingDir(String packetStagingDir) {
-		this.packetStagingDir = packetStagingDir;
-	}
-
 	public int getFilePacketSize() {
 		return filePacketSize;
 	}
 
 	public void setFilePacketSize(int filePacketSize) {
 		this.filePacketSize = filePacketSize;
-	}
-
-	public UUID getClientId() {
-		return clientId;
-	}
-
-	public void setClientId(UUID clientId) {
-		this.clientId = clientId;
 	}
 
 	public String getRepoType() {
@@ -75,6 +54,14 @@ public class CloudBackupClientConfig {
 
 	public void setRepoKey(String repoKey) {
 		this.repoKey = repoKey;
+	}
+
+	public String getFileStorageRootDir() {
+		return fileStorageRootDir;
+	}
+
+	public void setFileStorageRootDir(String fileStorageRootDir) {
+		this.fileStorageRootDir = fileStorageRootDir;
 	}
 	
 }

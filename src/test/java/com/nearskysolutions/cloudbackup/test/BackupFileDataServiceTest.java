@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +33,7 @@ import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 @Transactional
 public class BackupFileDataServiceTest {
 
-Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
+	Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 	
 	@Autowired	
 	private BackupFileDataService fileDataSvc;
@@ -46,7 +45,7 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 	public void queryPacketByID() {
 		
 				
-		BackupFileDataPacket dataPacket = new BackupFileDataPacket(1L, 100, 10, 1, 10, "/foo/bar", "file1.txt", "abcd", FileAction.Create);
+		BackupFileDataPacket dataPacket = new BackupFileDataPacket(1L, 1L, 10, 1, 10, "/foo/bar", "file1.txt", FileAction.Create);
 		
 		try {
 			dataPacket = fileDataSvc.addBackupFileDataPacket(dataPacket);
@@ -71,12 +70,8 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 	public void queryBatchByID() {
 						
 		UUID clientID = UUID.randomUUID();
-						
-		List<String> fileList = new ArrayList<String>();
-		fileList.add("/foo/bar/file1.txt");
-		fileList.add("/fee/boo/file2.txt");
-		
-		BackupFileDataBatch dataBatch = new BackupFileDataBatch(clientID, fileList);
+	
+		BackupFileDataBatch dataBatch = new BackupFileDataBatch(clientID);
 		
 		try {
 			dataBatch = fileDataSvc.addBackupFileDataBatch(dataBatch);
@@ -86,14 +81,8 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 			dataBatch = fileDataSvc.getDataBatchByBatchID(batchID);
 			
 			assertNotNull(dataBatch);
-			assertEquals(batchID, dataBatch.getFileBatchID());
-			
-			assertEquals(fileList.size(), dataBatch.getFileList().size());
-			
-			for(int i = 0; i < fileList.size(); i++) {			
-				assertEquals(fileList.get(i), dataBatch.getFileList().get(i));
-			}
-				
+			assertEquals(batchID, dataBatch.getFileBatchID());								
+							
 			
 		} catch (Exception e) {
 		
@@ -107,13 +96,9 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 	public void queryBatchByDate() {
 		
 		UUID clientID = UUID.randomUUID();
-		
-		List<String> fileList = new ArrayList<String>();
-		fileList.add("/foo/bar/file1.txt");
-		fileList.add("/fee/boo/file2.txt");
-								
-		BackupFileDataBatch dataBatch1 = new BackupFileDataBatch(clientID, fileList);
-		BackupFileDataBatch dataBatch2 = new BackupFileDataBatch(clientID, fileList);
+				
+		BackupFileDataBatch dataBatch1 = new BackupFileDataBatch(clientID);
+		BackupFileDataBatch dataBatch2 = new BackupFileDataBatch(clientID);
 		
 				
 		try {
@@ -147,20 +132,13 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 		UUID clientID = UUID.randomUUID();
 		String fileName1 = UUID.randomUUID().toString();
 		String fileName2 = UUID.randomUUID().toString();
-		String fileName3 = UUID.randomUUID().toString();
-		
+				
 		File file1 = File.createTempFile(fileName1, null);		
 		File file2 = File.createTempFile(fileName2, null);
 		File file3 = File.createTempFile(fileName2, null);
 		
 		
 		try {
-		
-			BackupFileTracker bftPath = new BackupFileTracker(clientID, 
-																"Repository Type 1", 
-																"Repository Location 1", 
-																"Repository Key 1", 
-																file1.getParent());
 			
 			BackupFileTracker bft1 = new BackupFileTracker(clientID, 
 															"Repository Type 1", 
@@ -201,21 +179,11 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 			assertFalse(backupTrackers.get(0).isFileDeleted());
 			assertFalse(backupTrackers.get(1).isFileDeleted());
 			
+			assertTrue(null != backupTrackers.get(0).getFileAttributes());
+			assertTrue(file1Size == backupTrackers.get(0).getFileAttributes().getFileSize());
+			
 			assertTrue(null != backupTrackers.get(1).getFileAttributes());
-			assertTrue(file1Size == backupTrackers.get(1).getFileAttributes().getFileSize());
-			
-			assertTrue(null != backupTrackers.get(2).getFileAttributes());
-			assertTrue(file2Size == backupTrackers.get(2).getFileAttributes().getFileSize());
-			
-//			int dirCount = 0;
-//			
-//			for(BackupFileTracker tracker : backupTrackers) {
-//				if( tracker.isDirectory() ) {
-//					dirCount += 1;
-//				}
-//			}
-//			
-//			assertEquals(1, dirCount);
+			assertTrue(file2Size == backupTrackers.get(1).getFileAttributes().getFileSize());
 			
 		} catch (Exception e) {		
 			logger.error("Error: ", e);
@@ -240,10 +208,10 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 			client = clientSvc.addBackupClient(client);
 			
 			BackupFileTracker backupFileTracker = new BackupFileTracker(client.getClientID(), 
-																"Repository Type 1", 
-																"Repository Location 1", 
-																"Repository Key 1", 
-																tempFile.getParent());
+																		"Repository Type 1", 
+																		"Repository Location 1", 
+																		"Repository Key 1", 
+																		tempFile.getAbsolutePath());
 						
 			backupFileTracker = fileDataSvc.addBackupFileTracker(backupFileTracker);
 			
@@ -258,7 +226,7 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 			backupFileTracker.setBackupRepositoryKey("updated key");
 			backupFileTracker.setFileName("updated file name");
 			backupFileTracker.setSourceDirectory("updated directory");
-			backupFileTracker.getFileAttributes().setFileModifiedDateTime(fileUpdateTimestamp.getTime());
+			backupFileTracker.getFileAttributes().setFileModifiedDateTimeMillis(fileUpdateTimestamp.getTimeInMillis());
 			backupFileTracker.setFileDeleted(true);
 			
 			backupFileTracker.getFileAttributes().setFileSize(3000L);
@@ -278,7 +246,7 @@ Logger logger = LoggerFactory.getLogger(CloudBackupClientTestConfig.class);
 			assertEquals("updated key", backupFileTracker.getBackupRepositoryKey());
 			assertEquals("updated file name", backupFileTracker.getFileName());
 			assertEquals("updated directory", backupFileTracker.getSourceDirectory());
-			assertEquals(fileUpdateTimestamp.getTime(), backupFileTracker.getFileAttributes().getFileModifiedDateTime());
+			assertTrue(fileUpdateTimestamp.getTime().toInstant().toEpochMilli() == backupFileTracker.getFileAttributes().getFileModifiedDateTimeMillis());
 			assertTrue(backupFileTracker.isFileDeleted());
 			assertTrue(3000L == backupFileTracker.getFileAttributes().getFileSize());
 			assertTrue(backupFileTracker.getFileAttributes().isHidden());

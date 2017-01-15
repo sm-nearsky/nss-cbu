@@ -1,7 +1,5 @@
 package com.nearskysolutions.cloudbackup.common;
 
-import java.util.Date;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -21,14 +19,14 @@ public class BackupFileAttributes {
 	@Column(name="backup_file_tracker_id")
 	private Long backupFileTrackerID;
 	
-	@Column(name="file_created_date_time")
-	private Date fileCreatedDateTime;
+	@Column(name="file_created_date_time_millis")
+	private Long fileCreatedDateTimeMillis;
 	
-	@Column(name="file_modified_date_time")
-	private Date fileModifiedDateTime;
+	@Column(name="file_modified_date_time_millis")
+	private Long fileModifiedDateTimeMillis;
 	
-	@Column(name="file_access_date_time")
-	private Date fileAccessDateTime;
+	@Column(name="file_access_date_time_millis")
+	private Long fileAccessDateTimeMillis;
 	
 	@Column(name="file_size")
 	private Long fileSize;
@@ -62,9 +60,9 @@ public class BackupFileAttributes {
 		
 	protected BackupFileAttributes() { }
 	
-	public BackupFileAttributes(Date fileCreatedDateTime,
-								Date fileModifiedDateTime,
-								Date fileAccessDateTime,
+	public BackupFileAttributes(Long fileCreatedDateTimeMillis,
+								Long fileModifiedDateTimeMillis,
+								Long fileAccessDateTimeMillis,
 								Long fileSize,
 								boolean isRegularFile,
 								boolean isDirectory,
@@ -78,9 +76,9 @@ public class BackupFileAttributes {
 								) {
 				
 		this.setBackupFileTrackerID(backupFileTrackerID);
-		this.setFileCreatedDateTime(fileCreatedDateTime);
-		this.setFileModifiedDateTime(fileModifiedDateTime); 
-		this.setFileAccessDateTime(fileAccessDateTime);
+		this.setFileCreatedDateTimeMillis(fileCreatedDateTimeMillis);
+		this.setFileModifiedDateTimeMillis(fileModifiedDateTimeMillis); 
+		this.setFileAccessDateTimeMillis(fileAccessDateTimeMillis);
 		this.setFileSize(fileSize);
 		this.setIsRegularFile(isRegularFile);
 		this.setIsDirectory(isDirectory);
@@ -105,28 +103,28 @@ public class BackupFileAttributes {
 		this.backupFileTrackerID = backupFileTrackerID;
 	}
 
-	public Date getFileCreatedDateTime() {
-		return fileCreatedDateTime;
+	public Long getFileCreatedDateTimeMillis() {
+		return fileCreatedDateTimeMillis;
 	}
 
-	public void setFileCreatedDateTime(Date fileCreatedDateTime) {
-		this.fileCreatedDateTime = fileCreatedDateTime;
+	public void setFileCreatedDateTimeMillis(Long fileCreatedDateTimeMillis) {
+		this.fileCreatedDateTimeMillis = fileCreatedDateTimeMillis;
 	}
 
-	public Date getFileModifiedDateTime() {
-		return fileModifiedDateTime;
+	public Long getFileModifiedDateTimeMillis() {
+		return fileModifiedDateTimeMillis;
 	}
 
-	public void setFileModifiedDateTime(Date fileModifiedDateTime) {
-		this.fileModifiedDateTime = fileModifiedDateTime;
+	public void setFileModifiedDateTimeMillis(Long fileModifiedDateTimeMillis) {
+		this.fileModifiedDateTimeMillis = fileModifiedDateTimeMillis;
 	}
 
-	public Date getFileAccessDateTime() {
-		return fileAccessDateTime;
+	public Long getFileAccessDateTimeMillis() {
+		return fileAccessDateTimeMillis;
 	}
 
-	public void setFileAccessDateTime(Date fileAccessDateTime) {
-		this.fileAccessDateTime = fileAccessDateTime;
+	public void setFileAccessDateTimeMillis(Long fileAccessDateTimeMillis) {
+		this.fileAccessDateTimeMillis = fileAccessDateTimeMillis;
 	}
 
 	public Long getFileSize() {
@@ -211,12 +209,12 @@ public class BackupFileAttributes {
 
 	@Override
 	public String toString() {
-		return String.format("BackupFileTracker[backupFileAttributesID=%s, backupFileTrackerID=%s, fileCreatedDateTime=%s, " +
-								"fileModifiedDateTime=%s, fileAccessDateTime=%s, fileSize=%s, isRegularFile=%s, " +
+		return String.format("BackupFileTracker[backupFileAttributesID=%s, backupFileTrackerID=%s, fileCreatedDateTimeMillis=%d, " +
+								"fileModifiedDateTimeMillis=%d, fileAccessDateTimeMillis=%d, fileSize=%s, isRegularFile=%s, " +
 								"isDirectory=%s, isSymbolicLink=%s, isOther=%s, fileKey=%s, isReadOnly=%s, isHidden=%s, " +
 								"isSystem=%s, isArchive=%s]",
-								backupFileAttributesID, backupFileTrackerID, fileCreatedDateTime, fileModifiedDateTime,
-								fileAccessDateTime, fileSize, isRegularFile, isDirectory, isSymbolicLink, isOther, fileKey,
+								backupFileAttributesID, backupFileTrackerID, fileCreatedDateTimeMillis, fileModifiedDateTimeMillis,
+								fileAccessDateTimeMillis, fileSize, isRegularFile, isDirectory, isSymbolicLink, isOther, fileKey,
 								isReadOnly, isHidden, isSystem, isArchive);
 	}	
 }

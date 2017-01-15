@@ -1,7 +1,5 @@
 package com.nearskysolutions.cloudbackup.services;
 
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,13 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
-import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.data.BackupFileClientRepository;
-import com.nearskysolutions.cloudbackup.data.BackupFileDataBatchRepository;
-import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
-import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
 
 @Component
 public class BackupFileClientServiceImpl implements BackupFileClientService {

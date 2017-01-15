@@ -9,11 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
-import com.nearskysolutions.cloudbackup.data.BackupFileClientRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataBatchRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
@@ -28,10 +26,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	
 	@Autowired
 	private BackupFileDataBatchRepository batchRepo;
-	
-	@Autowired
-	private BackupFileClientRepository clientRepo;
-	
+		
 	@Autowired
 	private BackupFileTrackerRepository trackerRepo;
 
