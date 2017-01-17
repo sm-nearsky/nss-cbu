@@ -26,7 +26,7 @@ public class PacketHandlerQueueTest implements FilePacketHandlerQueue {
 	public void removePacketsForBatch(Long batchID) throws Exception {
 
 		for(int i = packetList.size(); --i >= 0;) {
-			if( batchID == packetList.get(i).getFileBatchID() ) {
+			if( batchID.longValue() == packetList.get(i).getFileBatchID().longValue() ) {
 				packetList.remove(i);
 			}
 		}		
@@ -47,7 +47,7 @@ public class PacketHandlerQueueTest implements FilePacketHandlerQueue {
 		List<BackupFileDataPacket> filteredList = new ArrayList<BackupFileDataPacket>();
 		
 		for(BackupFileDataPacket packet : this.packetList) {
-			if( packet.getFileBatchID() == batchID ) {
+			if( packet.getFileBatchID().longValue() == batchID.longValue() ) {
 				filteredList.add(packet);
 			}
 		}

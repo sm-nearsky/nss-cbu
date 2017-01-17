@@ -28,9 +28,15 @@ public class BackupFileDataBatch {
 	@Column(name="date_time_sent")
 	private Date dateTimeSent;
 	
+	@Column(name="date_time_error")
+	private Date dateTimeError;
+	
+	@Column(name="last_send_error")
+	private String lastSendError;
+	
 	@Column(name="date_time_confirmed")
 	private Date dateTimeConfirmed;
-		
+	
 	protected BackupFileDataBatch() { }
 	
 	public BackupFileDataBatch(UUID clientID) {				
@@ -60,12 +66,6 @@ public class BackupFileDataBatch {
 		}
 	}
 	
-	@Override
-	public String toString() {
-		return String.format("BackupFileDataBatch[clientID=%s, dateTimeCaptured=%s]",
-								clientID, dateTimeCaptured);
-	}
-
 	public Date getDateTimeSent() {
 		return dateTimeSent;
 	}
@@ -81,6 +81,30 @@ public class BackupFileDataBatch {
 	public void setDateTimeConfirmed(Date dateTimeConfirmed) {
 		this.dateTimeConfirmed = dateTimeConfirmed;
 	}
+
+	public Date getDateTimeError() {
+		return dateTimeError;
+	}
+
+	public void setDateTimeError(Date dateTimeError) {
+		this.dateTimeError = dateTimeError;
+	}
 	
-		 
+	public String getLastSendError() {
+		return lastSendError;
+	}
+
+	public void setLastSendError(String lastSendError) {
+		this.lastSendError = lastSendError;
+	}	
+
+	@Override
+	public String toString() {
+		return String.format("BackupFileDataBatch[fileBatchID=%d, clientID=%s, dateTimeCaptured=%s"+
+								"dateTimeSent=%s, dateTimeError=%s, lastSendError=%s, dateTimeConfirmed=%s]",
+								fileBatchID, clientID, dateTimeCaptured, dateTimeSent, dateTimeError,
+								lastSendError, dateTimeConfirmed);
+	}
+
+	 
 }

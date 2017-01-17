@@ -175,10 +175,10 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 		for(File f : dirFile.listFiles()) {
 			if( f.isDirectory() ) {
 				childDirs.add(f);
-			} else {				
-				logger.info(String.format("Adding file to scan list: %s", f.getAbsolutePath()));
-				files.add(f);
-			}
+			} 
+				
+			logger.info(String.format("Adding file or directory to scan list: %s", f.getAbsolutePath()));
+			files.add(f);
 		}
 		
 		for(File dir : childDirs) {
@@ -198,11 +198,9 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 		
 		if (false == fileRef.exists() && false == fileTracker.isFileDeleted() ) {
 			throw new Exception(String.format("File %s doesn't exist", fileRef.getAbsolutePath()));
-		} else if (true == fileRef.isDirectory() ) {
-			throw new Exception(String.format("File %s is a directory", fileRef.getAbsolutePath()));
-		}
+		} 
 		
-		logger.info(String.format("Storing packets for file: %s", fileRef.getAbsolutePath()));
+		logger.info(String.format("Storing packets for file or dir: %s", fileRef.getAbsolutePath()));
 			
 		List<BackupFileDataPacket> lstPackets = new ArrayList<BackupFileDataPacket>();
 		
@@ -230,7 +228,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         
 		try {
 			
-			if(fileRef.length() == 0) {
+			if(fileRef.isDirectory() || fileRef.length() == 0) {
 				tempSaveFile = new File(String.format("%s.0", baseFileName));
 				
 				logger.info(String.format("Saving zero byte file to: %s", tempSaveFile.getAbsolutePath()));
@@ -240,7 +238,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 				fos = null;
 				
 				finalSaveFile = new File(String.format("%s.gz",tempSaveFile.getAbsolutePath()));		        
-				
+								
 				createGZipFileOutput(tempSaveFile, finalSaveFile);
 				
 				BackupFileDataPacket dataPacket = new BackupFileDataPacket(fileBatch.getFileBatchID(),
@@ -391,19 +389,39 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 		} else {		
 			logger.info(String.format("Found %d packets to send for batch ID: %d", packetList.size(), fileBatch.getFileBatchID()));
 			
-			for(BackupFileDataPacket packet : packetList) {
-				this.filePacketHandlerQueue.queuePacket(packet);
+			try { 
+			
+				for(BackupFileDataPacket packet : packetList) {
+					this.filePacketHandlerQueue.queuePacket(packet);
+				}
 				
-				packet.getFileReference().delete();
+				fileBatch.setDateTimeSent(new Date());
+				
+				logger.info(String.format("Sent time of %s set for batch ID: %d", fileBatch.getDateTimeSent(), fileBatch.getFileBatchID()));
+			
+			} catch (Exception ex) {			
+				
+				logger.error(String.format("Couldn't queue batch with ID: %d due to exception: %s", 
+								fileBatch.getFileBatchID(), ex));
+				
+				//Remove previous packets from queue
+				this.filePacketHandlerQueue.removePacketsForBatch(fileBatch.getFileBatchID());
+				
+				fileBatch.setDateTimeError(new Date());
+				
+				fileBatch.setLastSendError(ex.getMessage());
+				
+				throw ex;
+				
+			} finally {
+				//Remove local files whether or not the batch was successfully sent
+				for(BackupFileDataPacket packet : packetList) {
+					packet.getFileReference().delete();
+				}
+				
+				//Save update flags
+				batchRepo.save(fileBatch);
 			}
-			
-			fileBatch.setDateTimeSent(new Date());
-			
-			batchRepo.save(fileBatch);
-			
-			logger.info(String.format("Sent time of %s set for batch ID: %d", fileBatch.getDateTimeSent(), fileBatch.getFileBatchID()));
-			
-			//TODO: Save bad batch state on error and delete reference files
 		}		
 	}
 	

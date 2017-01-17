@@ -191,7 +191,7 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 			for(BackupFileDataPacket packet : packetList) {
 				if( packet.getFileBatchID() == dataBatch1.getFileBatchID() ) {
 					b1Count += 1;
-				} else if( packet.getFileBatchID() == dataBatch2.getFileBatchID() ) {
+				} else if( packet.getFileBatchID().longValue() == dataBatch2.getFileBatchID().longValue() ) {
 					b2Count += 1;
 				}
 			}

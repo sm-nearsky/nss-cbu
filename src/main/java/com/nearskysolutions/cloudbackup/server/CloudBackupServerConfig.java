@@ -3,6 +3,7 @@ package com.nearskysolutions.cloudbackup.server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +14,9 @@ import org.springframework.stereotype.Component;
 							"com.nearskysolutions.cloudbackup.services,"+
 							"com.nearskysolutions.cloudbackup.prod.beans")
 @ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.server")
+@ImportResource("classpath:bean-config.xml")
 @PropertySource({"classpath:persistence-${env}.properties",	
-				 "classpath:application-server.properties"})
+					"classpath:application-server.properties"})
 public class CloudBackupServerConfig {
 	
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )

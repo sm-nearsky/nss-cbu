@@ -177,7 +177,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Backup file tracker data can't be null");
 		}
 		
-		if(fileTracker.getBackupFileTrackerID() == null || fileTracker.getBackupFileTrackerID() <= 0) {
+		if(fileTracker.getBackupFileTrackerID() == null || fileTracker.getBackupFileTrackerID().longValue() <= 0) {
 			logger.error("Null or invalid BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.updateBackupFileTracker");
 			
 			throw new NullPointerException("Backup client UUID can't be null");
@@ -220,7 +220,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 
 	@Override
 	public List<BackupFileTracker> getActiveBackupTrackersForClient(UUID clientID) {
-		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(UUID client)", clientID));
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(UUID client) : %s", clientID));
 
 		if( clientID == null ) {
 			logger.error("Null clientID passed as argument to BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient");
@@ -235,6 +235,27 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		logger.info(String.format("Query found %d backup file trackers",retVal.size()));
 		
 		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getActiveBackupTrackersForClient(): file tracker list size=%d", retVal.size()));
+		
+		return retVal;
+	}
+
+	@Override
+	public BackupFileTracker getTrackerByBackupFileTrackerID(Long trackerID) {
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(Long trackerID) : %s", trackerID));
+
+		if( trackerID == null ) {
+			logger.error("Null trackerID passed as argument to BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID");
+			
+			throw new NullPointerException("Tracker ID can't be null");
+		}
+		
+		logger.info(String.format("Query for BackupFileTracker instance with tracker ID = %d", trackerID));
+		
+		BackupFileTracker retVal = trackerRepo.findOne(trackerID);
+					
+		logger.info(String.format("Query found backup file tracker with ID:", trackerID));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(): file tracker found: %s", retVal));
 		
 		return retVal;
 	}		

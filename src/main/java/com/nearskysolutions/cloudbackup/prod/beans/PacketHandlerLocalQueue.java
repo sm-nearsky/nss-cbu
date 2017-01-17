@@ -15,13 +15,17 @@ import javax.xml.bind.Unmarshaller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
+import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
+import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 
-@Component(value="ProdPacketHandler")
+@Component(value="LocalPacketHandler")
 public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 
 	Logger logger = LoggerFactory.getLogger(PacketHandlerLocalQueue.class);
@@ -31,6 +35,9 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
+	
+	@Autowired 
+	private BackupFileDataService dataSvc;
 	
 	public PacketHandlerLocalQueue() {
 			
@@ -75,8 +82,11 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 		
 		try {
 			
-			//Make sure file exists, i.e. not in a deleted state
-			if( packet.getFileReference().exists() ) {
+			BackupFileTracker tracker = this.dataSvc.getTrackerByBackupFileTrackerID(packet.getFileTrackerID());
+			
+			//Make sure file exists, i.e. not in a deleted state and file isn't a directory
+			//which doesn't need encoded data
+			if( packet.getFileReference().exists() && false == tracker.isDirectory() ) {
 				//Get packet data
 				logger.info(String.format("Reading packet file: %s", packet.getFileReference().getAbsolutePath()));
 						

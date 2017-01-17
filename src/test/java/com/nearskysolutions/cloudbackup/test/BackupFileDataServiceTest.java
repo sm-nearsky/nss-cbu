@@ -180,10 +180,10 @@ public class BackupFileDataServiceTest {
 			assertFalse(backupTrackers.get(1).isFileDeleted());
 			
 			assertTrue(null != backupTrackers.get(0).getFileAttributes());
-			assertTrue(file1Size == backupTrackers.get(0).getFileAttributes().getFileSize());
+			assertTrue(file1Size.longValue() == backupTrackers.get(0).getFileAttributes().getFileSize().longValue());
 			
 			assertTrue(null != backupTrackers.get(1).getFileAttributes());
-			assertTrue(file2Size == backupTrackers.get(1).getFileAttributes().getFileSize());
+			assertTrue(file2Size.longValue() == backupTrackers.get(1).getFileAttributes().getFileSize().longValue());
 			
 		} catch (Exception e) {		
 			logger.error("Error: ", e);
@@ -248,7 +248,7 @@ public class BackupFileDataServiceTest {
 			assertEquals("updated directory", backupFileTracker.getSourceDirectory());
 			assertTrue(fileUpdateTimestamp.getTime().toInstant().toEpochMilli() == backupFileTracker.getFileAttributes().getFileModifiedDateTimeMillis());
 			assertTrue(backupFileTracker.isFileDeleted());
-			assertTrue(3000L == backupFileTracker.getFileAttributes().getFileSize());
+			assertTrue(3000L == backupFileTracker.getFileAttributes().getFileSize().longValue());
 			assertTrue(backupFileTracker.getFileAttributes().isHidden());
 			
 		} catch (Exception e) {		
