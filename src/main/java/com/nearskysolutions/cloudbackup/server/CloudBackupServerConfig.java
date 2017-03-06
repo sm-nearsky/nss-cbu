@@ -14,9 +14,9 @@ import org.springframework.stereotype.Component;
 							"com.nearskysolutions.cloudbackup.services,"+
 							"com.nearskysolutions.cloudbackup.prod.beans")
 @ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.server")
-@ImportResource("classpath:bean-config.xml")
+@ImportResource("classpath:bean-server-config.xml")
 @PropertySource({"classpath:persistence-${env}.properties",	
-					"classpath:application-server.properties"})
+					"classpath:application-server-${env}.properties"})
 public class CloudBackupServerConfig {
 	
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
@@ -24,7 +24,6 @@ public class CloudBackupServerConfig {
 	private String repoType;
 	private String repoLoc;
 	private String repoKey;
-	private String fileStorageRootDir;
 	
 	public int getFilePacketSize() {
 		return filePacketSize;
@@ -56,14 +55,5 @@ public class CloudBackupServerConfig {
 
 	public void setRepoKey(String repoKey) {
 		this.repoKey = repoKey;
-	}
-
-	public String getFileStorageRootDir() {
-		return fileStorageRootDir;
-	}
-
-	public void setFileStorageRootDir(String fileStorageRootDir) {
-		this.fileStorageRootDir = fileStorageRootDir;
-	}
-	
+	}	
 }

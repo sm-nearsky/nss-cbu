@@ -131,14 +131,14 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 				}
 			}
 			
-			if( false == fileFound ) {
+			if( false == fileFound && false == tracker.isFileDeleted()) {
 				logger.info(String.format("Tracker file not found and marked for deletion: %s", tracker.getFileReference().getAbsolutePath()));
 				
 				tracker.setFileChanged(true);
 				tracker.setFileDeleted(true);
 			}
 			
-			if(tracker.isFileChanged()) {
+			if(tracker.isFileChanged()) {				
 				trackerRepo.save(tracker);
 			}			
 		}

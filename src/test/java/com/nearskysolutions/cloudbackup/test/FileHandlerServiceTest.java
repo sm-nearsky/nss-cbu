@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -58,6 +59,8 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 		Path testFile1 = null;
 		Path testFile2 = null;
 		Path testFile3 = null;
+		BackupFileTracker deletedFileTracker = null;
+		BackupFileTracker activeFileTracker = null;
 		FileOutputStream fos = null;
 		
 		UUID clientID = UUID.randomUUID();
@@ -110,7 +113,19 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 
 			assertEquals(3, trackerList.size());
 			
-			testFile1.toFile().delete();
+			deletedFileTracker = new BackupFileTracker(t1.getClientID(), 
+													   t1.getBackupRepositoryType(),
+													   t1.getBackupRepositoryLocation(),
+													   t1.getBackupRepositoryKey(),
+													   t1.getFileReference().getAbsolutePath());
+			
+			activeFileTracker = new BackupFileTracker(t2.getClientID(), 
+													   t2.getBackupRepositoryType(),
+													   t2.getBackupRepositoryLocation(),
+													   t2.getBackupRepositoryKey(),
+													   t2.getFileReference().getAbsolutePath());
+			
+			testFile1.toFile().delete();					
 			testFile1 = null;
 			
 			fos = new FileOutputStream(testFile2.toFile());
@@ -137,10 +152,22 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 				   assertTrue(bft.isFileDeleted());
 				}
 			}
+						
+			try {
+				//Exception expected because file repository, location and name match				
+			    this.fileDataSvc.addBackupFileTracker(activeFileTracker);
+			    fail("No execption thrown when duplicate backup tracker added" );
+			} catch (Exception ex) {
+			}
+			
+			//Should't throw an exception because this file was deleted
+			this.fileDataSvc.addBackupFileTracker(deletedFileTracker);
 				
 		} catch (Exception e) {
 			logger.error("Error: ", e);
-			e.printStackTrace();		
+			e.printStackTrace();
+			
+			fail();
 		} finally {
 			if( null != fos ) {
 				fos.close();
@@ -214,6 +241,8 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 		} catch (Exception e) {
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail();
 		}	
 		
 	}
@@ -256,6 +285,8 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 		} catch (Exception e) {
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail();
 		}
 	}
 }

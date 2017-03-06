@@ -158,9 +158,24 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			
 			throw new NullPointerException("Client ID within backup file tracker data can't be null");
 		}
-		
-		//TODO: Don't allow duplicate file tracking
-		
+				
+		List<BackupFileTracker> otherTrackers = trackerRepo.findMatchingTrackers(
+																fileTracker.getClientID(),
+																fileTracker.getBackupRepositoryType(),
+																fileTracker.getBackupRepositoryLocation(),																
+																fileTracker.getBackupRepositoryKey(),
+																fileTracker.getSourceDirectory(),
+																fileTracker.getFileName());
+				
+		if( null != otherTrackers && otherTrackers.size() > 0) {
+			if( otherTrackers.size() == 1 && otherTrackers.get(0).isFileDeleted()) {
+				//Replacing deleted file
+				trackerRepo.delete(otherTrackers.get(0));
+			} else {			
+				throw new Exception(String.format("Unable to create tracker for existing file: %s", fileTracker.toString()));
+			}
+		}
+			
 		BackupFileTracker retVal = trackerRepo.save(fileTracker);
 		
 		logger.info("Backup file tracker saved to repository");
@@ -193,6 +208,34 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		trackerRepo.save(fileTracker);
 		
 		logger.info("Backup file tracker data updated in repository");	
+		
+	}
+	
+	@Override
+	public void deleteBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
+		
+		if( fileTracker == null ) {
+			logger.error("Null BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.deleteBackupFileTracker");
+			
+			throw new NullPointerException("Backup file tracker data can't be null");
+		}
+		
+		if(fileTracker.getBackupFileTrackerID() == null || fileTracker.getBackupFileTrackerID().longValue() <= 0) {
+			logger.error("Null or invalid BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.deleteBackupFileTracker");
+			
+			throw new NullPointerException("Backup client UUID can't be null");
+		}
+		
+		if( false == trackerRepo.exists(fileTracker.getBackupFileTrackerID())) {
+			logger.error("Unknown BackupFileTrackerID (%d) passed to to BackupFileDataPacketServiceImpl.deleteBackupFileTracker", 
+							fileTracker.getBackupFileTrackerID());
+			
+			throw new Exception("Backup file tracker ID not found");
+		}		
+		
+		trackerRepo.delete(fileTracker);
+		
+		logger.info("Backup file tracker data deleted from repository");	
 		
 	}
 

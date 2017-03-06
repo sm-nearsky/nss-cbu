@@ -79,13 +79,8 @@ public class BackupFileTracker {
 		this.backupRepositoryType = backupRepositoryType;
 		this.backupRepositoryLocation = backupRepositoryLocation;
 		this.backupRepositoryKey = backupRepositoryKey;
-
-		if(sourceFile.isDirectory()) {
-			this.sourceDirectory = sourceFile.getAbsolutePath();
-		} else {
-			this.sourceDirectory = sourceFile.getParent();
-		}
-		
+		this.sourceDirectory = sourceFile.getParent();
+				
 		this.fileName = sourceFile.getName();		
 					
 		updateFileAttributes(sourceFile);		
@@ -191,16 +186,10 @@ public class BackupFileTracker {
 	
 	public File getFileReference() {
 		
-		String pathName;
-		
-		if( this.isDirectory() ) { 
-			pathName = this.getSourceDirectory();
-		} else {
-			pathName = String.format("%s%s%s", 
-								 this.getSourceDirectory(),
-								 File.separator,
-								 this.getFileName());
-		}
+		String 	pathName = String.format("%s%s%s", 
+											 this.getSourceDirectory(),
+											 File.separator,
+											 this.getFileName());
 		
 		return new File(pathName);
 	}

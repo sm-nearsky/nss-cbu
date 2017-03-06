@@ -119,7 +119,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				} else {
 					
 					fileHandlerSvc.sendBatchToProcessingQueue(fileBatch);
-					logger.info("Batch sent with tracker count: %d", lstTrackers.size());
+					logger.info(String.format("Batch sent with tracker count: %d", lstTrackers.size()));
 				}	
 			}
 			

@@ -24,7 +24,8 @@ public interface BackupFileDataService {
 	
 	void updateBackupFileTracker(BackupFileTracker fileTracker) throws Exception;
 	
-	//TODO Create a unit test for this
+	void deleteBackupFileTracker(BackupFileTracker fileTracker) throws Exception;
+
 	BackupFileTracker getTrackerByBackupFileTrackerID(Long trackerID);
 	
 	List<BackupFileTracker> getAllBackupTrackersForClient(UUID clientID);

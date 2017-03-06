@@ -48,11 +48,6 @@
       "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig"
     },
     {
-      "name": "com.nearskysolutions.cloudbackup.server.file-storage-root-dir",
-      "type": "java.lang.String",
-      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig"
-    },
-    {
       "name": "com.nearskysolutions.cloudbackup.server.repo-key",
       "type": "java.lang.String",
       "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig"

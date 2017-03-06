@@ -152,7 +152,7 @@ public class BackupFileDataServiceTest {
 															"Repository Type 1", 
 															"Repository Location 1", 
 															"Repository Key 1", 
-															file1.getAbsolutePath());
+															file2.getAbsolutePath());
 	
 			Long file2Size = bft2.getFileAttributes().getFileSize();
 			
@@ -184,6 +184,11 @@ public class BackupFileDataServiceTest {
 			
 			assertTrue(null != backupTrackers.get(1).getFileAttributes());
 			assertTrue(file2Size.longValue() == backupTrackers.get(1).getFileAttributes().getFileSize().longValue());
+			
+			BackupFileTracker tracker = fileDataSvc.getTrackerByBackupFileTrackerID(backupTrackers.get(0).getBackupFileTrackerID());
+			
+			assertTrue(null != tracker);
+			assertEquals(tracker.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
 			
 		} catch (Exception e) {		
 			logger.error("Error: ", e);
