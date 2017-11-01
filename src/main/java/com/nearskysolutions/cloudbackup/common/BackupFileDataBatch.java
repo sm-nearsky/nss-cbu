@@ -22,7 +22,7 @@ public class BackupFileDataBatch {
 	@Column(name="client_id", columnDefinition = "BINARY(16)")
 	private UUID clientID;
 	
-	@Column(name="date_time_captured")
+	@Column(name="date_time_captured")	
 	private Date dateTimeCaptured;
 	
 	@Column(name="date_time_sent")
@@ -100,7 +100,7 @@ public class BackupFileDataBatch {
 
 	@Override
 	public String toString() {
-		return String.format("BackupFileDataBatch[fileBatchID=%d, clientID=%s, dateTimeCaptured=%s"+
+		return String.format("BackupFileDataBatch[fileBatchID=%d, clientID=%s, dateTimeCaptured=%s "+
 								"dateTimeSent=%s, dateTimeError=%s, lastSendError=%s, dateTimeConfirmed=%s]",
 								fileBatchID, clientID, dateTimeCaptured, dateTimeSent, dateTimeError,
 								lastSendError, dateTimeConfirmed);

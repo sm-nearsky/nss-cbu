@@ -104,6 +104,26 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 	
 	@Override
+	public void setBatchError(Long batchUpdateID, String batchError) throws Exception {
+		
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.setBatchError(Long batchUpdateID, String batchError): batchUpdateID=%d, batchError=%s", 
+				batchUpdateID, batchError));
+
+		logger.info(String.format("Setting error text for BackupFileDataBatch with batch ID = %d", batchUpdateID));
+		
+		BackupFileDataBatch batch = this.getDataBatchByBatchID(batchUpdateID);
+		
+		batch.setDateTimeError(new Date());
+		
+		batch.setLastSendError(batchError);
+		
+		this.batchRepo.save(batch);
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.setBatchError(Long batchUpdateID, String batchError): batchUpdateID=%d, batchError=%s",
+				batchUpdateID, batchError));
+	}
+	
+	@Override
 	public BackupFileDataBatch addBackupFileDataBatch(BackupFileDataBatch fileDataBatch) throws Exception {
 		
 		if( fileDataBatch == null ) {
@@ -142,6 +162,25 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		
 		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getBatchesCreatedAfter(Date createDateTime): dateTime=%s with return: %s",
 									createDateTime, retVal));
+		
+		return retVal;
+	}
+	
+	@Override
+	public List<BackupFileDataBatch> getBatchesPendingConfirm() throws Exception {
+
+		logger.trace("In BackupFileDataPacketServiceImpl.getBatchesPendingConfirm()");
+		
+		List<BackupFileDataBatch> retVal = null;
+		
+		logger.info("Query for BackupFileDataBatch pending confirm");
+		
+		retVal = batchRepo.findPendingPacketBatches();
+				
+		logger.info(String.format("%d data batches found pending confirm", retVal.size()));
+		
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getBatchesPendingConfirm() with return: %s",
+					 retVal));
 		
 		return retVal;
 	}
@@ -292,11 +331,11 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Tracker ID can't be null");
 		}
 		
-		logger.info(String.format("Query for BackupFileTracker instance with tracker ID = %d", trackerID));
+		logger.info(String.format("Query for BackupFileTracker instance with tracker ID: %d", trackerID));
 		
 		BackupFileTracker retVal = trackerRepo.findOne(trackerID);
 					
-		logger.info(String.format("Query found backup file tracker with ID:", trackerID));
+		logger.info(String.format("Query found backup file tracker with ID: %d", trackerID));
 		
 		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(): file tracker found: %s", retVal));
 		

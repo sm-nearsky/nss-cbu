@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 
@@ -58,14 +59,11 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 	@Override
 	public void retrieveAndProcessBackupPackets(Long batchID) {
 										
-		try {
-		
-			//TODO Add client dir
-			
+		try {		
 			BackupFileDataBatch fileBatch = dataSvc.getDataBatchByBatchID(batchID);
-			
+			String clientDir = fileBatch.getClientID().toString();
 			List<BackupFileDataPacket> packetList = this.fileHandlerSvc.retrieveBatchFromProcessingQueue(fileBatch.getFileBatchID());
-						
+			
 			while(packetList.size() > 0) {				
 				Long trackerID = packetList.get(packetList.size()-1).getFileTrackerID();
 				BackupFileTracker tracker = dataSvc.getTrackerByBackupFileTrackerID(trackerID);
@@ -79,13 +77,10 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					}					
 				}	
 				
+				File fileDir = getFileTrackerDirectoryForClient(clientDir, trackerID);
+				
 				if( 1 == packetsForFile.size() && FileAction.Delete == packetsForFile.get(0).getFileAction() ) {
-					
-					File fileDir = new File(String.format("%s%s%s", 
-											this.fileStorageRootDir,
-											File.separator,
-											trackerID));
-
+				
 					if(fileDir.exists()) {					
 						//Clear any files
 						for(File file : fileDir.listFiles()) {
@@ -109,22 +104,34 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						}
 					}
 					
-					createStorageFile(baos, trackerID);
+					createStorageFile(baos, trackerID, fileDir);
 				}						
 			}		
 			
-		} catch (Exception ex) {			
-			logger.error("Unable to process data packets due to exception:", ex);
+		} catch (Exception ex) {		
+						
+			logger.error("Unable to process data packets due to exception", ex);
+			
+			try {
+				this.dataSvc.setBatchError(batchID, ex.getMessage());
+			} catch(Exception ex2) {
+				logger.error("Could not set batch error due to exception on save", ex2);
+			}
 		}
 	}
 
-	private void createStorageFile(ByteArrayOutputStream baos, Long trackerID)
+	private File getFileTrackerDirectoryForClient(String clientDir, Long trackerID) {
+		File fileDir = new File(String.format("%s%s%s%s%s", 
+				this.fileStorageRootDir,
+				File.separator,
+				clientDir,
+				File.separator,
+				trackerID));
+		return fileDir;
+	}
+
+	private void createStorageFile(ByteArrayOutputStream baos, Long trackerID, File fileDir)
 			throws FileNotFoundException, IOException {					
-				
-		File fileDir = new File(String.format("%s%s%d", 
-												this.fileStorageRootDir,
-												File.separator,
-												trackerID));
 
 		if(fileDir.exists()) {
 			
@@ -135,8 +142,8 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 			
 		} else {
 			
-			//Otherwise create tracker dir
-			fileDir.mkdir();
+			//Otherwise create tracker dir with all parents			
+			fileDir.mkdirs();
 		}
 		
 		File storageFile = new File(String.format("%s%s%s.gz",
@@ -183,10 +190,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 			List<BackupFileTracker> trackerList = this.dataSvc.getActiveBackupTrackersForClient(clientID);
 						
 			for(BackupFileTracker tracker : trackerList) {
-				File trackerDir = new File(String.format("%s%s%d", 
-						this.fileStorageRootDir,
-						File.separator,
-						tracker.getBackupFileTrackerID()));
+				File trackerDir = getFileTrackerDirectoryForClient(clientID.toString(), tracker.getBackupFileTrackerID()); 
 				
 				if(false == trackerDir.exists()) {
 					throw new Exception(String.format("Couldn't find directory for tracker ID: %d - %s",

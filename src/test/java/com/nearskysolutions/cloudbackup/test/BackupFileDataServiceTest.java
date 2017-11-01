@@ -3,10 +3,12 @@ package com.nearskysolutions.cloudbackup.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -99,6 +101,7 @@ public class BackupFileDataServiceTest {
 				
 		BackupFileDataBatch dataBatch1 = new BackupFileDataBatch(clientID);
 		BackupFileDataBatch dataBatch2 = new BackupFileDataBatch(clientID);
+		BackupFileDataBatch dataBatch3 = new BackupFileDataBatch(clientID);
 		
 				
 		try {
@@ -108,15 +111,27 @@ public class BackupFileDataServiceTest {
 			
 			dataBatch2 = fileDataSvc.addBackupFileDataBatch(dataBatch2);
 						
-			List<BackupFileDataBatch> batchList = fileDataSvc.getBatchesCreatedAfter(dataBatch1.getDateTimeCaptured());
+			List<BackupFileDataBatch> batchList1 = fileDataSvc.getBatchesCreatedAfter(dataBatch1.getDateTimeCaptured());
 						
-			assertNotNull(batchList);
-			assertEquals(1, batchList.size());
+			assertNotNull(batchList1);
+			assertEquals(1, batchList1.size());
 			
-			assertTrue(batchList.get(0).getDateTimeCaptured().compareTo(dataBatch1.getDateTimeCaptured()) > 0);
+			assertTrue(batchList1.get(0).getDateTimeCaptured().compareTo(dataBatch1.getDateTimeCaptured()) > 0);
 								  
-	        for (BackupFileDataBatch batch : batchList) {
+	        for (BackupFileDataBatch batch : batchList1) {
 				assertTrue(batch.getDateTimeCaptured().compareTo(dataBatch1.getDateTimeCaptured()) > 0);
+			}
+	        	                
+	        dataBatch3.setDateTimeConfirmed(new Date());	        
+	        dataBatch3 = fileDataSvc.addBackupFileDataBatch(dataBatch3);
+	        
+	        List<BackupFileDataBatch> batchList2 = fileDataSvc.getBatchesPendingConfirm();
+			
+			assertNotNull(batchList2);
+			assertEquals(2, batchList2.size());
+											  
+	        for (BackupFileDataBatch batch : batchList2) {
+	        	assertNull(batch.getDateTimeConfirmed());
 			}
 		} catch (Exception e) {
 		

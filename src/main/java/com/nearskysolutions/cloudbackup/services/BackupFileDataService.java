@@ -18,7 +18,11 @@ public interface BackupFileDataService {
 	
 	List<BackupFileDataBatch> getBatchesCreatedAfter(Date createDateTime) throws Exception;
 	
+	List<BackupFileDataBatch> getBatchesPendingConfirm() throws Exception;
+		
 	BackupFileDataBatch getDataBatchByBatchID(Long batchUpdateID) throws Exception;
+	
+	void setBatchError(Long batchUpdateID, String batchError) throws Exception;
 	
 	BackupFileTracker addBackupFileTracker(BackupFileTracker fileTracker) throws Exception;
 	
