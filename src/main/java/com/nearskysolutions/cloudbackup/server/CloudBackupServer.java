@@ -1,6 +1,8 @@
 package com.nearskysolutions.cloudbackup.server;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,11 +36,23 @@ public class CloudBackupServer  implements CommandLineRunner {
 		
 		try {
 			//TODO Can't re-run batch on exception		
-			this.processBackupPackets();
+			//this.processBackupPackets();
 			
-			//this.backupStorageHandler.recreateTrackerFiles();
+//			List<Long> trackerIDList = new ArrayList<Long>();
+//			trackerIDList.add(26L);
+//			trackerIDList.add(3L);
+//			
+//			this.backupStorageHandler.recreateTrackerFiles(UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9"), 
+//					 										trackerIDList, 
+//					 										"/C:/tmp/nssCbuFileRestore", 
+//					 										true);
+			
+			System.exit(0);
+			
 		} catch (Exception ex) {
 			logger.error("Server run failed", ex);
+			
+			System.exit(1);
 		}
 	}
 

@@ -13,6 +13,8 @@ import javax.persistence.Id;
 import javax.persistence.PrePersist;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.GenericGenerator;
 
 @Entity
@@ -40,6 +42,7 @@ public class BackupFileClient {
 	@Column(name="client_repository_key")
 	private String currentRepositoryKey;
 	
+	@Fetch(FetchMode.SELECT)
 	@ElementCollection(fetch = FetchType.EAGER)	
 	private List<String> directoryIncludes;
 		

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.Calendar;
@@ -63,6 +64,8 @@ public class BackupFileDataServiceTest {
 		
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
 		}
 	
 		
@@ -90,6 +93,8 @@ public class BackupFileDataServiceTest {
 		
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
 		}
 		
 	}
@@ -137,6 +142,8 @@ public class BackupFileDataServiceTest {
 		
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
 		}
 		
 	}	
@@ -207,7 +214,9 @@ public class BackupFileDataServiceTest {
 			
 		} catch (Exception e) {		
 			logger.error("Error: ", e);
-			e.printStackTrace();	
+			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
 		} finally {
 			file1.delete();
 			file2.delete();			
@@ -274,6 +283,8 @@ public class BackupFileDataServiceTest {
 		} catch (Exception e) {		
 			logger.error("Error: ", e);
 			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
 		} finally {
 			tempFile.delete();
 		}

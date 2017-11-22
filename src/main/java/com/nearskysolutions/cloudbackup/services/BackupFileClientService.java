@@ -11,7 +11,9 @@ public interface BackupFileClientService {
 	
 	void updateBackupClient(BackupFileClient backupClient) throws Exception;
 	
-	BackupFileClient getBackupClientByUUID(UUID clientID) throws Exception;
+	void deleteBackupClient(UUID clientID) throws Exception;
+	
+	BackupFileClient getBackupClientByClientID(UUID clientID) throws Exception;
 	
 	List<BackupFileClient> getAllBackupClients();	
 }

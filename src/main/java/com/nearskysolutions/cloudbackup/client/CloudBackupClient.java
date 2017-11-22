@@ -61,7 +61,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				
 		try {
 		
-			BackupFileClient client = clientSvc.getBackupClientByUUID(clientId);
+			BackupFileClient client = clientSvc.getBackupClientByClientID(clientId);
 			
 			if( null == client ) {
 				throw new Exception(String.format("No client found for UUID: %s", clientId));

@@ -179,16 +179,54 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 	}
 	
 	@Override
-	public void recreateTrackerFiles() {
+	public void recreateTrackerFiles(UUID clientID, 
+									 List<Long> trackerIDList, 
+									 String restoreTarget, 
+									 boolean isIncludeSubdirectories) throws Exception {
 		try {
 			
-			//TODO: Temp for testing
-			String restoreRootDir = "/C:/tmp/nssCbuFileRestore";
+//			String restoreRootDir = "/C:/tmp/nssCbuFileRestore";
+//			
+//			UUID clientID = UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9");
 			
-			UUID clientID = UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9");
+			if( null == clientID ) {
+				throw new NullPointerException("Client ID parameter can't be null");
+			} else if( null == trackerIDList || 0 == trackerIDList.size() ) {
+				throw new NullPointerException("Tracker list can't be null or empty");
+			} else if( null == restoreTarget ) {
+				throw new NullPointerException("Restore target can't be null");
+			}
 			
-			List<BackupFileTracker> trackerList = this.dataSvc.getActiveBackupTrackersForClient(clientID);
-						
+			String restoreRootDir = restoreTarget;
+			
+			List<BackupFileTracker> trackerList = new ArrayList<BackupFileTracker>();
+			
+			for(Long trackerID : trackerIDList) {
+				BackupFileTracker bft = this.dataSvc.getTrackerByBackupFileTrackerID(trackerID);
+				
+				if( null == bft ) {
+					throw new Exception(String.format("No file tracker found for id: %d", trackerID));
+				} else if (!bft.getClientID().equals(clientID)) {
+					throw new Exception(String.format("Client ID mismatch for file tracker: %d, found %s, expected %s", 
+										trackerID, bft.getClientID(), clientID));
+				}
+				
+				trackerList.add(bft);
+			}
+			
+			if( true == isIncludeSubdirectories ) {
+				List<BackupFileTracker> newTrackerList = new ArrayList<BackupFileTracker>(); 
+							
+				List<BackupFileTracker> clientTrackerList = dataSvc.getAllBackupTrackersForClient(clientID);
+				
+				//Recursively scan and add any child directories and files
+				for(BackupFileTracker tracker : trackerList) {
+					createFileTreeForTracker(tracker, newTrackerList, clientTrackerList);
+				}
+				
+				trackerList = newTrackerList;
+			}
+			
 			for(BackupFileTracker tracker : trackerList) {
 				File trackerDir = getFileTrackerDirectoryForClient(clientID.toString(), tracker.getBackupFileTrackerID()); 
 				
@@ -233,6 +271,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					restoreFile.getParentFile().mkdirs();
 				}
 				
+				//TODO Handle sub directories
 				if( tracker.isDirectory() ) {
 					if( false == restoreFile.exists() ) {
 						restoreFile.mkdir();		
@@ -248,6 +287,24 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		} catch (Exception ex) {			
 			logger.error("Unable to recreate tracker files due to exception:", ex);
 		}
+	}
+
+	private void createFileTreeForTracker(BackupFileTracker tracker, List<BackupFileTracker> newTrackerList, List<BackupFileTracker> clientTrackerList) {
+		
+		if( tracker.isDirectory() ) {
+			for(BackupFileTracker clientTracker : clientTrackerList) {
+				if( clientTracker.getSourceDirectory() != null && 
+					clientTracker.getSourceDirectory().toLowerCase().equals(tracker.getFileReference().getAbsolutePath().toLowerCase())) {
+
+					createFileTreeForTracker(clientTracker, newTrackerList, clientTrackerList);
+					
+					newTrackerList.add(clientTracker);
+				}
+			}
+		}
+		
+		newTrackerList.add(tracker);
+		
 	}
 
 	private void createFileFromGZip(File sourceFile, File destFile) throws IOException {

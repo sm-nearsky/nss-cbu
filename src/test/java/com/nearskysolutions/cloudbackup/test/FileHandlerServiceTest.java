@@ -167,7 +167,7 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 			logger.error("Error: ", e);
 			e.printStackTrace();
 			
-			fail();
+			fail(String.format("Error: %s", e.getMessage()));
 		} finally {
 			if( null != fos ) {
 				fos.close();
@@ -242,7 +242,7 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 			logger.error("Error: ", e);
 			e.printStackTrace();
 			
-			fail();
+			fail(String.format("Error: %s", e.getMessage()));
 		}	
 		
 	}
@@ -286,7 +286,7 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 			logger.error("Error: ", e);
 			e.printStackTrace();
 			
-			fail();
+			fail(String.format("Error: %s", e.getMessage()));
 		}
 	}
 }

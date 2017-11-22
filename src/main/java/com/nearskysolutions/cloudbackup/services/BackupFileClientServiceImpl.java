@@ -22,54 +22,94 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 	@Override
 	public BackupFileClient addBackupClient(BackupFileClient backupClient) throws Exception {
 		
+		logger.trace("In BackupFileClientServiceImpl.addBackupClient(BackupFileClient backupClient)");
+		
 		if( backupClient == null ) {
-			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.addBackupClient");
+			logger.error("Null BackupFileClient passed as argument to BackupFileClientServiceImpl.addBackupClient");
 			
 			throw new NullPointerException("Backup client data can't be null");
+		} else if( null != backupClient.getClientID() ) {
+			logger.error("BackupFileClient passed with client ID to BackupFileClientServiceImpl.addBackupClient");
+			
+			throw new Exception("Can't pass client ID on backup client add");
+		} else if( null == backupClient.getClientName() || 0 == backupClient.getClientName().trim().length()) {
+			logger.error("Null or empty client name passed to BackupFileClientServiceImpl.addBackupClient");
+			
+			throw new Exception("BackupFileClient client name can't be null or empty");
 		}
 		
 		BackupFileClient retVal = clientRepo.save(backupClient);
 		
 		logger.info("Backup client data saved to repository");
 		
+		logger.trace("Completed BackupFileClientServiceImpl.addBackupClient(BackupFileClient backupClient)");
+		
 		return retVal;
 	}
 
 	@Override
 	public void updateBackupClient(BackupFileClient backupClient) throws Exception {
+		
+		logger.trace("In BackupFileClientServiceImpl.updateBackupClient(BackupFileClient backupClient)");
+		
 		if( backupClient == null ) {
-			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.updateBackupClient");
+			logger.error("Null BackupFileClient passed as argument to BackupFileClientServiceImpl.updateBackupClient");
 			
 			throw new NullPointerException("Backup client data can't be null");
-		}
-		
-		if(backupClient.getClientID() == null) {
-			logger.error("Null BackupFileClient passed as argument to BackupFileDataPacketServiceImpl.updateBackupClient");
+		} else 	if(backupClient.getClientID() == null) {
+			logger.error("Null BackupFileClient passed as argument to BackupFileClientServiceImpl.updateBackupClient");
 			
 			throw new NullPointerException("Backup client UUID can't be null");
-		}
-		
-		if( false == clientRepo.exists(backupClient.getClientID())) {
-			logger.error("Unknown client ID (%s) passed to to BackupFileDataPacketServiceImpl.updateBackupClient", backupClient.getClientID());
+		} else if( false == clientRepo.exists(backupClient.getClientID())) {
+			logger.error("Unknown client ID (%s) passed to to BackupFileClientServiceImpl.updateBackupClient", backupClient.getClientID());
 			
-			throw new Exception("Backup client UUID not found");
+			throw new Exception("Backup client ID not found");
+		}else if( null == backupClient.getClientName() || 0 == backupClient.getClientName().trim().length()) {
+			logger.error("Null or empty client name passed to BackupFileClientServiceImpl.updateBackupClient");
+			
+			throw new Exception("BackupFileClient client name can't be null or empty");
 		}
 		
 		clientRepo.save(backupClient);
 		
-		logger.info("Backup client data updated in repository");	
-	
+		logger.info("Backup client record updated in repository");
 		
+		logger.trace("Completed BackupFileClientServiceImpl.updateBackupClient(BackupFileClient backupClient)");
 	}
 	
 	@Override
-	public BackupFileClient getBackupClientByUUID(UUID clientID) throws Exception {
+	public void deleteBackupClient(UUID clientID) throws Exception {
+		
+		logger.trace(String.format("In BackupFileClientServiceImpl.deleteBackupClient(UUID clientID): clientID=%s", 
+				clientID));
+		
+		if( clientID == null ) {
+			logger.error("Null clientID passed as argument to BackupFileClientServiceImpl.deleteBackupClient");			
+			throw new NullPointerException("Client ID can't be null");
+		}
+		
+		if( false == clientRepo.exists(clientID)) {
+			logger.error("Unknown client ID (%s) passed to to BackupFileClientServiceImpl.deleteBackupClient", clientID.toString());
+			
+			throw new Exception("Backup client ID not found");
+		}
+		
+		clientRepo.delete(clientID);
+		
+		logger.info("Backup client record delete from repository");	
+	
+		logger.trace(String.format("Completed BackupFileClientServiceImpl.deleteBackupClient(UUID clientID): clientID=%s",
+					clientID));
+	}
+	
+	@Override
+	public BackupFileClient getBackupClientByClientID(UUID clientID) throws Exception {
 				
-		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s", 
+		logger.trace(String.format("In BackupFileClientServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s", 
 						clientID));
 
 		if( clientID == null ) {
-			logger.error("Null clientID passed as argument to BackupFileDataPacketServiceImpl.getBackupClientByUUID");
+			logger.error("Null clientID passed as argument to BackupFileClientServiceImpl.getBackupClientByUUID");
 			
 			throw new NullPointerException("Client ID can't be null");
 		}
@@ -90,7 +130,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 		
 		logger.info(String.format("Backup client %sfound for ID = %s",((retVal == null) ? "not " : ""), clientID));
 		
-		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s with return: %s",
+		logger.trace(String.format("Completed BackupFileClientServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s with return: %s",
 									clientID, retVal));
 		
 		return retVal;
@@ -98,7 +138,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 
 	@Override
 	public List<BackupFileClient> getAllBackupClients() {
-		logger.trace("In BackupFileDataPacketServiceImpl.getAllBackupClients()");
+		logger.trace("In BackupFileClientServiceImpl.getAllBackupClients()");
 
 		logger.info(String.format("Query for all BackupFileClient instances"));
 		
@@ -106,9 +146,8 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 					
 		logger.info(String.format("Query found %d backup clients",retVal.size()));
 		
-		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getAllBackupClients(): client list size=%d", retVal.size()));
-									
-		
+		logger.trace(String.format("Completed BackupFileClientServiceImpl.getAllBackupClients(): client list size=%d", retVal.size()));
+											
 		return retVal;
 	}	
 }
