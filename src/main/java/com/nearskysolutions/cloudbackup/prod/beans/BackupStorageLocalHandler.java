@@ -2,45 +2,41 @@ package com.nearskysolutions.cloudbackup.prod.beans;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
-import java.util.zip.GZIPInputStream;
-
-import javax.persistence.Column;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.stereotype.Component;
+import org.springframework.util.FileSystemUtils;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileAttributes;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
+import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
+import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
+import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
 import com.nearskysolutions.cloudbackup.services.FileHandlerService;
+import com.nearskysolutions.cloudbackup.util.FileZipUtils;
 
 @Component(value="LocalBackupStorage")
 public class BackupStorageLocalHandler implements BackupStorageHandler {
@@ -53,8 +49,33 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 	@Autowired 
 	private BackupFileDataService dataSvc;
 	
+	@Autowired
+	private BackupRestoreRequestService restoreSvc;
+	
 	@Value( "${com.nearskysolutions.cloudbackup.localstore.fileStorageRootDir}" )
 	private String fileStorageRootDir;
+	
+	@Value( "${com.nearskysolutions.cloudbackup.localstore.fileStorageRestoreDir}" )
+	private String fileStorageRestoreDir;
+	
+	@Value( "${com.nearskysolutions.cloudbackup.localstore.maxRestoreSize}" )
+	private int maxRestoreSize;
+	
+	private File systemTempDir;
+	
+	public BackupStorageLocalHandler() throws Exception {
+		String sysProp = System.getProperty("java.io.tmpdir");
+		
+		if( null == sysProp ) {
+			throw new Exception("Missing system property for java.io.tmpdir");
+		}
+		
+		systemTempDir = new File(sysProp);
+		
+		if(false == systemTempDir.exists()) {
+			throw new Exception(String.format("System temp directory '%s' doesn't exist.", sysProp));
+		}
+	}
 	
 	@Override
 	public void retrieveAndProcessBackupPackets(Long batchID) {
@@ -104,7 +125,11 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						}
 					}
 					
-					createStorageFile(baos, trackerID, fileDir);
+					createStorageFile(baos.toByteArray(), String.format("%s.zip", UUID.randomUUID().toString()), fileDir);
+					
+					tracker.setTrackerStatus(BackupFileTrackerStatus.Stored);
+					
+					this.dataSvc.updateBackupFileTracker(tracker);
 				}						
 			}		
 			
@@ -130,7 +155,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		return fileDir;
 	}
 
-	private void createStorageFile(ByteArrayOutputStream baos, Long trackerID, File fileDir)
+	private void createStorageFile(byte[] fileBytes, String sourceFileName, File fileDir)
 			throws FileNotFoundException, IOException {					
 
 		if(fileDir.exists()) {
@@ -146,13 +171,12 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 			fileDir.mkdirs();
 		}
 		
-		File storageFile = new File(String.format("%s%s%s.gz",
-													fileDir.getAbsolutePath(),
-													File.separator,
-													UUID.randomUUID()));		
+		File storageFile = new File(String.format("%s%s%s",
+									fileDir.getAbsolutePath(),
+									File.separator,
+									sourceFileName));
 		
-		FileOutputStream fos = null;
-		byte[] fileBytes = baos.toByteArray();
+		FileOutputStream fos = null;		
 		int bufferSize = 4096;
 		int bytesRead = 0;
 		int readSize;
@@ -160,7 +184,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		try {
 			fos = new FileOutputStream(storageFile);
 		
-			while(bytesRead < baos.toByteArray().length) {
+			while(bytesRead < fileBytes.length) {
 				readSize = Math.min(bufferSize, fileBytes.length - bytesRead);
 				
 				fos.write(fileBytes, bytesRead, readSize);
@@ -171,6 +195,11 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 			fos.flush();
 			fos.close();
 			
+//			GZipUtils.CreateZipFileOutput(storageFile, new File(String.format("%s%s%s.zip",
+//																fileDir.getAbsolutePath(),
+//																File.separator,
+//																UUID.randomUUID())));
+			
 		} finally {
 			if( null != fos ) {
 				fos.close();
@@ -179,25 +208,27 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 	}
 	
 	@Override
-	public void recreateTrackerFiles(UUID clientID, 
-									 List<Long> trackerIDList, 
-									 String restoreTarget, 
-									 boolean isIncludeSubdirectories) throws Exception {
-		try {
+	public void recreateTrackerFiles(BackupRestoreRequest restoreRequest) {
+		
+		File restoreTempDir = new File(String.format("%s%s%s", this.systemTempDir, File.separator, UUID.randomUUID().toString()));
+		int totalFileSize = 0;
+		
+		try {			
 			
-//			String restoreRootDir = "/C:/tmp/nssCbuFileRestore";
-//			
-//			UUID clientID = UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9");
-			
-			if( null == clientID ) {
-				throw new NullPointerException("Client ID parameter can't be null");
-			} else if( null == trackerIDList || 0 == trackerIDList.size() ) {
+			if( null == restoreRequest ) {
+				throw new NullPointerException("Restore request parameter can't be null");
+			} 
+						
+			List<Long> trackerIDList = restoreRequest.getRequestedFileTrackerIDs();			
+						
+			if( null == trackerIDList || 0 == trackerIDList.size() ) {
 				throw new NullPointerException("Tracker list can't be null or empty");
-			} else if( null == restoreTarget ) {
-				throw new NullPointerException("Restore target can't be null");
-			}
+			} 
 			
-			String restoreRootDir = restoreTarget;
+			restoreRequest.setCurrentStatus(RestoreStatus.Initializing);
+						
+			restoreSvc.updateRestoreRequest(restoreRequest);
+			
 			
 			List<BackupFileTracker> trackerList = new ArrayList<BackupFileTracker>();
 			
@@ -206,18 +237,18 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				
 				if( null == bft ) {
 					throw new Exception(String.format("No file tracker found for id: %d", trackerID));
-				} else if (!bft.getClientID().equals(clientID)) {
+				} else if (!bft.getClientID().equals(restoreRequest.getClientID())) {
 					throw new Exception(String.format("Client ID mismatch for file tracker: %d, found %s, expected %s", 
-										trackerID, bft.getClientID(), clientID));
+										trackerID, bft.getClientID(), restoreRequest.getClientID()));
 				}
 				
 				trackerList.add(bft);
 			}
 			
-			if( true == isIncludeSubdirectories ) {
+			if( true == restoreRequest.isIncludeSubdirectories() ) {
 				List<BackupFileTracker> newTrackerList = new ArrayList<BackupFileTracker>(); 
 							
-				List<BackupFileTracker> clientTrackerList = dataSvc.getAllBackupTrackersForClient(clientID);
+				List<BackupFileTracker> clientTrackerList = dataSvc.getAllBackupTrackersForClient(restoreRequest.getClientID());
 				
 				//Recursively scan and add any child directories and files
 				for(BackupFileTracker tracker : trackerList) {
@@ -227,66 +258,129 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				trackerList = newTrackerList;
 			}
 			
+			restoreRequest.setCurrentStatus(RestoreStatus.Processsing);
+			restoreRequest.setProcessingStartDateTime(new Date());
+			
+			restoreSvc.updateRestoreRequest(restoreRequest);
+												
+
+			
 			for(BackupFileTracker tracker : trackerList) {
-				File trackerDir = getFileTrackerDirectoryForClient(clientID.toString(), tracker.getBackupFileTrackerID()); 
 				
-				if(false == trackerDir.exists()) {
-					throw new Exception(String.format("Couldn't find directory for tracker ID: %d - %s",
-										tracker.getBackupFileTrackerID(), trackerDir));
-				}
+				//Check for external change of request status
+				BackupRestoreRequest latestRestoreRequest = restoreSvc.getRestoreRequestByRequestID(restoreRequest.getRequestID());
 				
-				
-				String restorePath;
-				//TODO Make configurable
-				int driveLetterIdx = tracker.getSourceDirectory().indexOf(":");
-				
-				if( 0 > driveLetterIdx ) {
-					restorePath = tracker.getSourceDirectory();
-				} else {
-					restorePath = tracker.getSourceDirectory().substring(driveLetterIdx + 1);
-				}
-											
-				File restoreFile = new File(String.format("%s%s%s%s%s", 
-												restoreRootDir, 
-												File.separator, 
-												restorePath, 
-												File.separator, 
-												tracker.getFileName()));
-				
-				File[] dirFiles = trackerDir.listFiles(new FilenameFilter() {					
-					@Override
-					public boolean accept(File dir, String name) {						
-						return name.toLowerCase().endsWith(".gz");
-					}
-				});
-				
-				if(1 != dirFiles.length) {
-					throw new Exception(String.format("Invalid number of files found in storage directory: %s, expected 1 found %d",
-														trackerDir, dirFiles.length));
-				}
-				
-				if(false == restoreFile.getParentFile().exists()) {
-					logger.info(String.format("Creating restore directory: %s", restoreFile.getParentFile().getAbsolutePath()));
+				if( null != latestRestoreRequest && RestoreStatus.Processsing == latestRestoreRequest.getCurrentStatus() ) {
 					
-					restoreFile.getParentFile().mkdirs();
-				}
-				
-				//TODO Handle sub directories
-				if( tracker.isDirectory() ) {
-					if( false == restoreFile.exists() ) {
-						restoreFile.mkdir();		
-						setFileAttributes(restoreFile, tracker.getFileAttributes());
-					}
-				} else {
-					createFileFromGZip(dirFiles[0], restoreFile);
+					totalFileSize += restoreFileFromTracker(restoreRequest.getClientID(), 
+															restoreTempDir, 
+															tracker);
 					
-					setFileAttributes(restoreFile, tracker.getFileAttributes());
-				}				
+					if( totalFileSize > this.maxRestoreSize ) {
+						throw new Exception("Maximum restore size reached, decrease requested restores");
+					}
+					
+				} else { //State has changed since request started
+													
+					throw new Exception(String.format("Status has changed for request ID: %s since start of restore process, aborting", restoreRequest.getRequestID()));
+				}
 			}
+			
+			String finalRestoreFileName = String.format("%s%s%s.zip", this.fileStorageRestoreDir, File.separator, UUID.randomUUID().toString());
+			File finalRestoreFile = new File(finalRestoreFileName);
+			
+			FileZipUtils.CreateZipFileOutput(restoreTempDir, restoreTempDir.getAbsolutePath(), finalRestoreFile);
+				
+			restoreRequest.setCurrentStatus(RestoreStatus.Success);			
+			restoreRequest.setCompletedDateTime(new Date());
+			restoreRequest.setRestoreResultsURLs(new ArrayList<String>());
+			
+			//TODO Change to URL format
+			restoreRequest.getRestoreResultsURLs().add(finalRestoreFileName);
+			
+			restoreSvc.updateRestoreRequest(restoreRequest);
 			
 		} catch (Exception ex) {			
 			logger.error("Unable to recreate tracker files due to exception:", ex);
+			
+			try {
+				restoreRequest.setCurrentStatus(RestoreStatus.Error);
+				restoreRequest.setErrorMessage(ex.getLocalizedMessage());
+				restoreRequest.setCompletedDateTime(new Date());
+				
+				restoreSvc.updateRestoreRequest(restoreRequest);				
+			} catch (Exception subEx) {
+				logger.error("Unable to update restore request to error status due to execption:", ex);
+			}			
+		} finally {					
+
+			if( restoreTempDir.exists() ) {				
+				 FileSystemUtils.deleteRecursively(restoreTempDir);
+			}
 		}
+	}
+
+	private int restoreFileFromTracker(UUID clientID, File restoreRootDir, BackupFileTracker tracker)
+			throws Exception, IOException {
+		File trackerDir = getFileTrackerDirectoryForClient(clientID.toString(), tracker.getBackupFileTrackerID()); 
+		int totalFileSize = 0;
+		
+		if(false == trackerDir.exists()) {
+			throw new Exception(String.format("Couldn't find directory for tracker ID: %d - %s",
+								tracker.getBackupFileTrackerID(), trackerDir));
+		}
+		
+		
+		String restorePath;
+		//TODO Make configurable
+		int driveLetterIdx = tracker.getSourceDirectory().indexOf(":");
+		
+		if( 0 > driveLetterIdx ) {
+			restorePath = tracker.getSourceDirectory();
+		} else {
+			restorePath = tracker.getSourceDirectory().substring(driveLetterIdx + 1);
+		}
+									
+		File restoreFile = new File(String.format("%s%s%s%s%s", 
+													restoreRootDir.getAbsolutePath(), 
+													File.separator, 
+													restorePath, 
+													File.separator, 
+													tracker.getFileName()));
+		
+		File[] dirFiles = trackerDir.listFiles(new FilenameFilter() {					
+			@Override
+			public boolean accept(File dir, String name) {						
+				return name.toLowerCase().endsWith(".zip");
+			}
+		});
+		
+		if(1 != dirFiles.length) {
+			throw new Exception(String.format("Invalid number of files found in storage directory: %s, expected 1 found %d",
+												trackerDir, dirFiles.length));
+		}
+		
+		if(false == restoreFile.getParentFile().exists()) {
+			logger.info(String.format("Creating restore directory: %s", restoreFile.getParentFile().getAbsolutePath()));
+			
+			restoreFile.getParentFile().mkdirs();
+		}
+		
+		//TODO Test using directory tracker
+		if( tracker.isDirectory() ) {
+			if( false == restoreFile.exists() ) {
+				restoreFile.mkdir();		
+				setFileAttributes(restoreFile, tracker.getFileAttributes());
+			}
+		} else {
+			FileZipUtils.CreateSingleFileFromZip(dirFiles[0], restoreFile);
+			
+			totalFileSize += dirFiles[0].length();
+			
+			setFileAttributes(restoreFile, tracker.getFileAttributes());
+		}
+		
+		return totalFileSize;
 	}
 
 	private void createFileTreeForTracker(BackupFileTracker tracker, List<BackupFileTracker> newTrackerList, List<BackupFileTracker> clientTrackerList) {
@@ -306,41 +400,9 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		newTrackerList.add(tracker);
 		
 	}
-
-	private void createFileFromGZip(File sourceFile, File destFile) throws IOException {
-		
-		GZIPInputStream gis = null;
-		FileOutputStream gzipOut = null;
-		int byteCount;
-		byte[] readBytes = new byte[1024];
-		
-		logger.info(String.format("Restoring compressed data to final file: %s", destFile.getAbsolutePath()));
-		
-		try
-		{
-			gis = new GZIPInputStream(new FileInputStream(sourceFile));
-		
-		    gzipOut = new FileOutputStream(destFile);
-		    
-		    while ((byteCount = gis.read(readBytes)) > 0) {
-		    	gzipOut.write(readBytes, 0, byteCount);
-		    }	    			        
-		 
-		} catch (IOException ex) {		
-			throw ex;		
-		} finally {			
-			
-			if(null != gis) {
-				gis.close();
-			}
-			
-			if(null != gzipOut) {
-				gzipOut.close();
-			}		
-		}
-	}
 	
-private void setFileAttributes(File restoreFile, BackupFileAttributes fileAttributes) throws IOException {
+	
+	private void setFileAttributes(File restoreFile, BackupFileAttributes fileAttributes) throws IOException {
 	    
 	    //TODO Make configurable
 

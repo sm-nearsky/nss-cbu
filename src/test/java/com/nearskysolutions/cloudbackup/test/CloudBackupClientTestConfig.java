@@ -19,16 +19,5 @@ import org.springframework.stereotype.Component;
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
 @EntityScan("com.nearskysolutions.cloudbackup.common")
 public class CloudBackupClientTestConfig {
-
-	private String testValue;
-
-	public String getTestValue() {
-		return testValue;
-	}
-
-	public void setTestValue(String testValue) {
-		this.testValue = testValue;
-	}
-	
 	
 }

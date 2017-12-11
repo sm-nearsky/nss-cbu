@@ -30,8 +30,8 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 
 	Logger logger = LoggerFactory.getLogger(PacketHandlerLocalQueue.class);
 	
-	@Value( "${com.nearskysolutions.cloudbackup.queue.localQueueDir}" )
-	private String localQueueDir;
+	@Value( "${com.nearskysolutions.cloudbackup.queue.localPacketQueueDir}" )
+	private String localPacketQueueDir;
 
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
@@ -48,7 +48,7 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 		
 		logger.trace("Called PacketHandlerLocalQueue.queueHasPackets");
 		
-		File queueDir = new File(this.localQueueDir);
+		File queueDir = new File(this.localPacketQueueDir);
 		boolean retVal = false;
 		
 		if(false == queueDir.exists()) {
@@ -116,14 +116,14 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 				packet.setFileData(encodedBytes);
 			}
 			
-			File parentDir = new File(this.localQueueDir);
+			File parentDir = new File(this.localPacketQueueDir);
 			
 			if( false == parentDir.exists() ) {
 				parentDir.mkdir();
 			}
 			
 			//Save packet as XML and output
-			String outputFileName = String.format("%s%sbatch%d_packet%d_number%d.xml", this.localQueueDir, 
+			String outputFileName = String.format("%s%sbatch%d_packet%d_number%d.xml", this.localPacketQueueDir, 
 																						  File.separator, 
 																						  packet.getFileBatchID(), 
 																						  packet.getDataPacketID(), 
@@ -160,9 +160,9 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 
 		logger.trace(String.format("Called PacketHandlerLocalQueue.removePacketsForBatch passing batch ID: %d", batchID));
 		
-		logger.info(String.format("Scanning queue directory: %s for packets matching batch ID: %d for removal", this.localQueueDir, batchID));
+		logger.info(String.format("Scanning queue directory: %s for packets matching batch ID: %d for removal", this.localPacketQueueDir, batchID));
 		
-		File queueDir = new File(this.localQueueDir);
+		File queueDir = new File(this.localPacketQueueDir);
 		
 		for(File file : queueDir.listFiles()) {
 			if(file.getName().toLowerCase().startsWith(String.format("batch%d",batchID))) {
@@ -181,12 +181,12 @@ public class PacketHandlerLocalQueue implements FilePacketHandlerQueue {
 		
 		logger.trace("Called PacketHandlerLocalQueue.retreivePacketsForBatch");
 		
-		File queueDir = new File(this.localQueueDir);
+		File queueDir = new File(this.localPacketQueueDir);
 		List<BackupFileDataPacket> packetList = new ArrayList<BackupFileDataPacket>();
 		BackupFileDataPacket packet;
 		
 		if(false == queueDir.exists()) {
-			logger.info(String.format("Packet queue directory: %s does not exist, returning null from PacketHandlerLocalQueue.dequeueNextPacket"));
+			logger.info(String.format("Packet queue directory: %s does not exist, returning null from PacketHandlerLocalQueue.retreivePacketsForBatch"));
 		} else {						
 			List<File> filteredList = new ArrayList<File>();			
 						

@@ -77,6 +77,8 @@ public class AdminController {
 			retVal = new ResponseEntity<BackupFileClient>(client, httpStatus);
 		
 		} catch(Exception ex) {
+			logger.error("Error in AdminController.getClientByID", ex);
+			
 			retVal = new ResponseEntity<BackupFileClient>((BackupFileClient)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
@@ -111,6 +113,8 @@ public class AdminController {
 			retVal = new ResponseEntity<Void>(httpStatus);
 						
 		} catch(Exception ex) {
+			logger.error("Error in AdminController.upsertBackupClient", ex);
+			
 			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
@@ -148,6 +152,8 @@ public class AdminController {
 			retVal = new ResponseEntity<Void>(httpStatus);
 						
 		} catch(Exception ex) {			
+			logger.error("Error in AdminController.deleteBackupClient", ex);
+			
 			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
@@ -179,6 +185,8 @@ public class AdminController {
 			retVal = new ResponseEntity<BackupRestoreRequest>(httpStatus);
 						
 		} catch(Exception ex) {
+			logger.error("Error in AdminController.insertBackupRestoreRequest", ex);
+			
 			retVal = new ResponseEntity<BackupRestoreRequest>((BackupRestoreRequest)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
@@ -230,6 +238,8 @@ public class AdminController {
 			retVal = new ResponseEntity<BackupRestoreRequest>(restoreRequest, httpStatus);
 		
 		} catch(Exception ex) {
+			logger.error("Error in AdminController.getReqstoreRequestByID", ex);
+			
 			retVal = new ResponseEntity<BackupRestoreRequest>((BackupRestoreRequest)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
@@ -241,7 +251,7 @@ public class AdminController {
 	@RequestMapping(value="/restoreRequests/{restoreRequestID}", method=RequestMethod.DELETE)
     public ResponseEntity<Void> cancelRestoreRequest(@PathVariable UUID restoreRequestID) {
 		
-logger.trace(String.format("In AdminController.cancelRestoreRequest(UUID restoreRequestID) : %s", restoreRequestID));
+		logger.trace(String.format("In AdminController.cancelRestoreRequest(UUID restoreRequestID) : %s", restoreRequestID));
 		
 		logger.info(String.format("Admin controller called to cancel backup restore request by restoreRequestID: %s", restoreRequestID));
 		
@@ -268,6 +278,8 @@ logger.trace(String.format("In AdminController.cancelRestoreRequest(UUID restore
 			retVal = new ResponseEntity<Void>(httpStatus);
 						
 		} catch(Exception ex) {			
+			logger.error("Error in AdminController.cancelRestoreRequest", ex);
+			
 			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		

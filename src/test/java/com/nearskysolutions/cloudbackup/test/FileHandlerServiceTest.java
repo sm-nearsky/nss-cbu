@@ -29,6 +29,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
@@ -86,8 +87,14 @@ Logger logger = LoggerFactory.getLogger(FileHandlerServiceTest.class);
 															"Repository Key 1", 
 															testFile2.toFile().getAbsolutePath());
 			
-			fileDataSvc.addBackupFileTracker(t1);
-			fileDataSvc.addBackupFileTracker(t2);
+			assertEquals(BackupFileTrackerStatus.Unknown, t1.getTrackerStatus());
+			assertEquals(BackupFileTrackerStatus.Unknown, t2.getTrackerStatus());
+			
+			t1 = fileDataSvc.addBackupFileTracker(t1);
+			t2 = fileDataSvc.addBackupFileTracker(t2);
+			
+			assertEquals(BackupFileTrackerStatus.Pending, t1.getTrackerStatus());
+			assertEquals(BackupFileTrackerStatus.Pending, t2.getTrackerStatus());
 			
 			this.fileHandlerSvc.updateFileTrackerListing(clientID, 
 															tempDir.toFile().getAbsolutePath(),

@@ -44,6 +44,7 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
@@ -274,7 +275,8 @@ public class BackupAdminServiceTest {
 	    												trackerIdList, 
 														NotifyType.None, 
 														"test target 1", 
-														"test parameter 1");
+														"test parameter 1",
+														true);
 	    	    	
 	    	logger.info(String.format("Created restore request 1: %s", restoreRequest1.toString()));
 	    	
@@ -407,6 +409,7 @@ public class BackupAdminServiceTest {
 		assertEquals(compareRequest.getNotifyType(), testRequest.getNotifyType());
 		assertEquals(compareRequest.getNotifyTarget(), testRequest.getNotifyTarget());
 		assertEquals(compareRequest.getNotifyParameter(), testRequest.getNotifyParameter());		
+		assertEquals(compareRequest.isIncludeSubdirectories(), testRequest.isIncludeSubdirectories());
 		
 		if( null == testRequest.getRequestedFileTrackerIDs() ) {			
 			assertNull(compareRequest.getRequestedFileTrackerIDs());			
@@ -452,6 +455,12 @@ public class BackupAdminServiceTest {
 																		   this.backupClient.getCurrentRepositoryLocation(),
 																		   this.backupClient.getCurrentRepositoryKey(),
 																		   tmpFile2.getAbsolutePath()));
+		
+		this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker2.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker2);
     }
 
 	public void cleanUpAfterRestoreTests() throws Exception {

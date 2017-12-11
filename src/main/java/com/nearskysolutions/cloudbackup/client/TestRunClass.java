@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
@@ -13,14 +14,19 @@ import javax.xml.bind.Unmarshaller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
+import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
+import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
+import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
 import com.nearskysolutions.cloudbackup.services.FileHandlerService;
 
 @Component
@@ -36,8 +42,29 @@ public class TestRunClass {
 	
 	@Autowired 
 	private BackupFileClientService clientSvc;
+			
+//	public void RunTest() {
+//	
+//		UUID clientID = UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9");
+//		ArrayList<Long> trackerIDs = new ArrayList<Long>();
+//		
+//		trackerIDs.add(185L);
+//		trackerIDs.add(187L);
+//		
+//		
+//		try {
+//			BackupRestoreRequest req = new BackupRestoreRequest(clientID, "test", trackerIDs, NotifyType.None, "test", "test", true);
+//			
+//			this.restoreSvc.addRestoreRequest(req);
+//			
+//			this.backupStorageHandler.recreateTrackerFiles(req);
+//			
+//		} catch (Exception ex) {
+//			logger.error("Unable to process restore request", ex);		
+//		}		
+//	}
 	
-	public void RunTest1() {
+	public void RunTest() {
 		
 		String outputFile = "C:\\tmp\\testOutput.gz";
 		
@@ -53,7 +80,7 @@ public class TestRunClass {
 		
 	}
 	
-	public void RunTest() {
+	public void RunTest2() {
 	
 //		List<String> tmpIncs = new ArrayList<String>();
 //		tmpIncs.add("/C:/tmp/brmstest");

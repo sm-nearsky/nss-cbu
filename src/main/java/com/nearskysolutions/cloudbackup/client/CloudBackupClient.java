@@ -46,6 +46,9 @@ public class CloudBackupClient  implements CommandLineRunner {
 //		trc.RunTest();
 
 		this.scanAndSendBackups();
+		
+		System.exit(0);
+		
 	}
 
 	public static void main(String[] args) throws Exception {

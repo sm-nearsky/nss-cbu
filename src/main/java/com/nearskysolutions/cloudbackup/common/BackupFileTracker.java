@@ -47,6 +47,9 @@ public class BackupFileTracker {
 	@Column(name="file_deleted")
 	private boolean isFileDeleted;
 		
+	@Column(name="tracker_status")
+	private BackupFileTrackerStatus trackerStatus;
+	
 	@OneToOne(cascade=CascadeType.ALL) 
 	private BackupFileAttributes fileAttributes;
 	
@@ -55,6 +58,13 @@ public class BackupFileTracker {
 	
 	@Transient
 	private boolean isFileNew;
+	
+	public enum BackupFileTrackerStatus {
+		Pending,
+		Stored,
+		Deleted,
+		Unknown
+	}
 	
 	protected BackupFileTracker() { }
 	
@@ -80,9 +90,11 @@ public class BackupFileTracker {
 		this.backupRepositoryLocation = backupRepositoryLocation;
 		this.backupRepositoryKey = backupRepositoryKey;
 		this.sourceDirectory = sourceFile.getParent();
-				
+		
 		this.fileName = sourceFile.getName();		
 					
+		this.trackerStatus = BackupFileTrackerStatus.Unknown;
+		
 		updateFileAttributes(sourceFile);		
 	}
 
@@ -194,15 +206,14 @@ public class BackupFileTracker {
 		return new File(pathName);
 	}
 	
-	@Override
-	public String toString() {
-		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
-								"backupRepositoryKey=%s, fileName=%s, sourceDirectory=%s, " +
-								"isFileDeleted=%s, fileAttributes=%s]",
-								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
-								fileName, sourceDirectory, isFileDeleted, fileAttributes);
+	public BackupFileTrackerStatus getTrackerStatus() {
+		return trackerStatus;
 	}
 
+	public void setTrackerStatus(BackupFileTrackerStatus trackerStatus) {
+		this.trackerStatus = trackerStatus;
+	}
+	
 	public boolean isFileChanged() {
 		return isFileChanged;
 	}
@@ -217,6 +228,15 @@ public class BackupFileTracker {
 
 	public void setFileNew(boolean isFileNew) {
 		this.isFileNew = isFileNew;
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
+								"backupRepositoryKey=%s, fileName=%s, sourceDirectory=%s, " +
+								"isFileDeleted=%s, fileAttributes=%s]",
+								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
+								fileName, sourceDirectory, isFileDeleted, fileAttributes);
 	}
 
 	public boolean equalsFile(File compareFile) throws IOException {

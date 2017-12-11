@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataBatchRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
@@ -215,6 +216,8 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			}
 		}
 			
+		fileTracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
+		
 		BackupFileTracker retVal = trackerRepo.save(fileTracker);
 		
 		logger.info("Backup file tracker saved to repository");

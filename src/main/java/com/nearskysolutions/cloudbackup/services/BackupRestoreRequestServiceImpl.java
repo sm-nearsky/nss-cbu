@@ -7,10 +7,14 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
+import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
+import com.nearskysolutions.cloudbackup.common.RestoreRequestHandlerQueue;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
 import com.nearskysolutions.cloudbackup.data.BackupRestoreRequestRepository;
@@ -19,6 +23,10 @@ import com.nearskysolutions.cloudbackup.data.BackupRestoreRequestRepository;
 public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestService {
 	
 	Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceImpl.class);
+
+	@Autowired
+	@Qualifier("RestoreRequestHandlerQueue")
+	RestoreRequestHandlerQueue restoreRequestHandlerQueue;
 	
 	@Autowired
 	private BackupRestoreRequestRepository requestRepo;
@@ -34,37 +42,14 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 	public BackupRestoreRequest addRestoreRequest(BackupRestoreRequest restoreRequest) throws Exception {
 
 		logger.trace("In BackupRestoreRequestServiceImpl.addRestoreRequest(BackupRestoreRequest restoreRequest)");
+				
+		BackupRestoreRequest retVal = null;
 		
-		if( null == restoreRequest ) {
-			logger.error("Null BackupRestoreRequest passed as argument to BackupRestoreRequestServiceImpl.addRestoreRequest");
-			
-			throw new NullPointerException("Backup restore request can't be null");
-		}	
+		validateBackupRestoreRequest(restoreRequest, "addRestoreRequest");
 		
 		UUID clientID = restoreRequest.getClientID();
-				
-		if( null == clientID) {
-			logger.error("Null client ID passed to BackupRestoreRequestServiceImpl.addRestoreRequest");
-			
-			throw new Exception("BackupRestoreRequest client ID can't be null");
-		}
 		
-		if( null == backupClientSvc.getBackupClientByClientID(clientID)) {
-			logger.error(String.format("No backup found for client ID: %s", clientID));
-			
-			throw new Exception(String.format("No client found for ID: %s", clientID));
-		}
-				
-		if( null == restoreRequest.getSubmitterId() || 0 == restoreRequest.getSubmitterId().trim().length()) {
-			logger.error("Null or empty submitter ID passed to BackupRestoreRequestServiceImpl.addRestoreRequest");
-			
-			throw new Exception("BackupRestoreRequest submitter ID can't be null or empty");
-		}
-		
-		//TODO Implement e-mail notification
-		if( NotifyType.None != restoreRequest.getNotifyType() ) {
-			throw new Exception("Only NotifyType.None currently supported"); 
-		}
+		logger.info(String.format("Storing backup request for clientID: %s with notify type: %s", clientID, restoreRequest.getNotifyType()));
 		
 		for(Long trackerID : restoreRequest.getRequestedFileTrackerIDs()) {
 			BackupFileTracker fileTracker = fileSvc.getTrackerByBackupFileTrackerID(trackerID);
@@ -76,18 +61,68 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 			if( false == fileTracker.getClientID().equals(clientID) ) {
 				throw new Exception(String.format("Client ID mismatch for tracker ID: %d", trackerID));
 			}
+			
+			if( BackupFileTrackerStatus.Stored != fileTracker.getTrackerStatus() ) {
+				throw new Exception(String.format("Invalid status for tracker ID: %s, Status must be Stored", trackerID));
+			}
+			
+			logger.info(String.format("Adding file tracker with ID: %d for backup request with clientID: %s", trackerID, clientID));
 		}
 		
 		restoreRequest.setCurrentStatus(RestoreStatus.Pending);
 		restoreRequest.setSubmittedDateTime(new Date());
 		
-		BackupRestoreRequest retVal = requestRepo.save(restoreRequest);
+		try {
+			logger.info("Saving restore request to repo");
+			
+			retVal = requestRepo.save(restoreRequest);
+			
+			logger.info(String.format("Adding restore request %s to request queue", retVal.getRequestID()));
+			
+			this.restoreRequestHandlerQueue.queueRequest(retVal);
+			
+			logger.info("Backup request data saved to repository and added to processing queue");
+			
+		} catch(Exception ex) {
+			logger.error(String.format("Couldn't save or queue BackupRestoreRequest", restoreRequest.toString()), ex);			
+		}
 		
-		logger.info("Backup request data saved to repository");
-		
-		logger.trace("Completed BackupRestoreRequestServiceImpl.addRestoreRequest(BackupFileClient backupClient)");
+		logger.trace("Completed BackupRestoreRequestServiceImpl.addRestoreRequest(BackupRestoreRequest restoreRequest)");
 		
 		return retVal;
+	}
+
+	private void validateBackupRestoreRequest(BackupRestoreRequest restoreRequest, String methodName) throws Exception {
+		if( null == restoreRequest ) {
+			logger.error(String.format("Null BackupRestoreRequest passed as argument to %s", methodName));
+			
+			throw new NullPointerException("Backup restore request can't be null");
+		}	
+		
+		UUID clientID = restoreRequest.getClientID();
+				
+		if( null == clientID) {
+			logger.error(String.format("Null client ID passed as argument to %s", methodName));
+						
+			throw new Exception("BackupRestoreRequest client ID can't be null");
+		}
+		
+		if( null == backupClientSvc.getBackupClientByClientID(clientID)) {
+			logger.error(String.format("No backup client found for client ID: %s", clientID));
+			
+			throw new Exception(String.format("No client found for ID: %s", clientID));
+		}
+				
+		if( null == restoreRequest.getSubmitterId() || 0 == restoreRequest.getSubmitterId().trim().length()) {
+			logger.error(String.format("Null or empty submitter ID passed to %s", methodName));
+						
+			throw new Exception("BackupRestoreRequest submitter ID can't be null or empty");
+		}
+		
+		//TODO Implement e-mail notification
+		if( NotifyType.None != restoreRequest.getNotifyType() ) {
+			throw new Exception("Only NotifyType.None currently supported"); 
+		}		
 	}
 
 	@Override
@@ -181,11 +216,25 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 		}
 		
 		restoreRequest.setCurrentStatus(RestoreStatus.Cancelled);
-			
+		restoreRequest.setCompletedDateTime(new Date());
+		
 		this.requestRepo.save(restoreRequest);
 				
 		logger.info(String.format("Backup restore request with ID: %s marked for cancellation", requestID));
 		
 		logger.trace(String.format("Completed BackupRestoreRequestServiceImpl.cancelRestoreRequestForID(UUID requestID): request ID = %s", requestID));
+	}
+
+	@Override
+	public BackupRestoreRequest updateRestoreRequest(BackupRestoreRequest restoreRequest) throws Exception {
+		logger.trace("In BackupRestoreRequestServiceImpl.updateRestoreRequest(BackupRestoreRequest restoreRequest)");
+				
+		validateBackupRestoreRequest(restoreRequest, "updateRestoreRequest");
+
+		this.requestRepo.save(restoreRequest);
+		
+		logger.trace(String.format("Completed BackupRestoreRequestServiceImpl.updateRestoreRequest(BackupRestoreRequest restoreRequest): %s", restoreRequest.toString()));
+		
+		return restoreRequest;
 	}
 }

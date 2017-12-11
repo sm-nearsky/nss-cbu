@@ -1,8 +1,6 @@
 package com.nearskysolutions.cloudbackup.server;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +13,9 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
+import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
+import com.nearskysolutions.cloudbackup.common.RestoreRequestHandlerQueue;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 
 @SpringBootApplication
@@ -32,11 +32,29 @@ public class CloudBackupServer  implements CommandLineRunner {
 	@Autowired 
 	private BackupFileDataService dataSvc;
 	
+	@Autowired
+	@Qualifier("RestoreRequestHandlerQueue")
+	RestoreRequestHandlerQueue restoreRequestHandlerQueue;
+	
 	public void run(String... args) {
 		
 		try {
-			//TODO Can't re-run batch on exception		
-			//this.processBackupPackets();
+			
+			boolean bFoundCommand = false;
+			
+			if( args != null && args.length > 0 ) {
+				for(int i = 0; i < args.length; i++) {
+					if( args[i].equalsIgnoreCase("processRestoreRequests") ) {
+						this.processRestoreRequests();
+						bFoundCommand = true;
+					}
+				}
+			}
+			
+			if(false == bFoundCommand) {
+				//TODO Can't re-run batch on exception		
+				this.processBackupPackets();
+			}
 			
 //			List<Long> trackerIDList = new ArrayList<Long>();
 //			trackerIDList.add(26L);
@@ -47,6 +65,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 //					 										"/C:/tmp/nssCbuFileRestore", 
 //					 										true);
 			
+			//Force exit to stop HTTP server
 			System.exit(0);
 			
 		} catch (Exception ex) {
@@ -55,6 +74,34 @@ public class CloudBackupServer  implements CommandLineRunner {
 			System.exit(1);
 		}
 	}
+
+	private void processRestoreRequests() {
+		logger.trace("Starting CloudBackupServer.processRestoreRequests");
+	
+		try {
+			logger.info("Checking queue for restore reqeuests...");
+			
+			if(false == this.restoreRequestHandlerQueue.queueHasRequests()) {
+				logger.info("No requests found");
+			} else {
+				
+				while( this.restoreRequestHandlerQueue.queueHasRequests() ) {
+					BackupRestoreRequest restoreRequest = this.restoreRequestHandlerQueue.retreiveNextRestoreRequest();
+					
+					logger.info(String.format("Processing restore request with ID: %s", restoreRequest.getRequestID()));
+					
+					this.backupStorageHandler.recreateTrackerFiles(restoreRequest);
+					
+					logger.info(String.format("Processing complete for request with ID: %s", restoreRequest.getRequestID()));
+				}
+			}
+			
+		} catch(Exception ex) {
+			
+		}
+		
+		logger.trace("Completed CloudBackupServer.processRestoreRequests");
+	}	
 
 	private void processBackupPackets() throws Exception {
 		logger.trace("Starting CloudBackupServer.processBackupPackets");
@@ -71,7 +118,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 			this.backupStorageHandler.retrieveAndProcessBackupPackets(batch.getFileBatchID());
 		}		
 		
-		logger.trace("Finished CloudBackupServer.processBackupPackets");
+		logger.trace("Completed CloudBackupServer.processBackupPackets");
 	}
 	
 	public static void main(String[] args) throws Exception {

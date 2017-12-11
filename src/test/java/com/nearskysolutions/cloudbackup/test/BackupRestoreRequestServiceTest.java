@@ -2,7 +2,9 @@ package com.nearskysolutions.cloudbackup.test;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -10,6 +12,8 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,17 +27,25 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
+import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
+import com.nearskysolutions.cloudbackup.common.RestoreRequestHandlerQueue;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
+import com.nearskysolutions.cloudbackup.test.beans.PacketHandlerQueueTest;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = CloudBackupClientTestConfig.class)
@@ -51,6 +63,10 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 	@Autowired
 	private BackupFileDataService backupDataSvc;
 
+	@Autowired
+	@Qualifier("RestoreRequestHandlerQueue")
+	private RestoreRequestHandlerQueue restoreRequestHandlerTest;
+	
 	private BackupFileClient backupClient;
 	private BackupFileTracker clientFileTracker1 = null;
 	private BackupFileTracker clientFileTracker2 = null;
@@ -84,6 +100,12 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 																		   this.backupClient.getCurrentRepositoryLocation(),
 																		   this.backupClient.getCurrentRepositoryKey(),
 																		   tmpFile2.getAbsolutePath()));
+
+		this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker2.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker2);
 	}
 	
 	@After
@@ -111,43 +133,30 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 		}
 	}
 	
+	
+	
 	@Test
-	public void queryRestoreRequestByRequestID() {
+	public void addRestoreRequest() {
 		
 		try {
 									
 			String submitterId = "test user";
 			String notifyTarget = "test target";
 			String notifyParameter = "test parameter";
-						
-			BackupRestoreRequest restoreRequest = createBackupRestoreRequest();
-			restoreRequest.setSubmitterId(submitterId);
-			restoreRequest.setNotifyTarget(notifyTarget);
-			restoreRequest.setNotifyParameter(notifyParameter);
+			boolean bIncludeSubdirectories = true;
 			
-			restoreRequest = restoreSvc.addRestoreRequest(restoreRequest);
-							
-			UUID requestID = restoreRequest.getRequestID();
+			BackupRestoreRequest origRestoreRequest = createBackupRestoreRequest();
+			origRestoreRequest.setSubmitterId(submitterId);
+			origRestoreRequest.setNotifyTarget(notifyTarget);
+			origRestoreRequest.setNotifyParameter(notifyParameter);
+			origRestoreRequest.setIncludeSubdirectories(bIncludeSubdirectories);
 			
-			restoreRequest = restoreSvc.getRestoreRequestByRequestID(requestID);
+			BackupRestoreRequest newRestoreRequest =  restoreSvc.addRestoreRequest(origRestoreRequest);
+												
+			compareRestoreRequests(newRestoreRequest, origRestoreRequest, true);			
 			
-			assertNotNull(restoreRequest);
-			assertEquals(this.backupClient.getClientID(), restoreRequest.getClientID());
-			assertEquals(requestID, restoreRequest.getRequestID());
-			assertEquals(submitterId, restoreRequest.getSubmitterId());
-			assertEquals(NotifyType.None, restoreRequest.getNotifyType());
-			assertEquals(notifyTarget, restoreRequest.getNotifyTarget());
-			assertEquals(notifyParameter, restoreRequest.getNotifyParameter());
-			assertNotNull(restoreRequest.getRequestedFileTrackerIDs());
-			assertEquals(restoreRequest.getRequestedFileTrackerIDs().size(), restoreRequest.getRequestedFileTrackerIDs().size());
 			
-			for(int i = 0; i < restoreRequest.getRequestedFileTrackerIDs().size(); i++) {				
-				assertEquals(restoreRequest.getRequestedFileTrackerIDs().get(i), restoreRequest.getRequestedFileTrackerIDs().get(i));
-			}			
-			
-			assertNotNull(restoreRequest.getSubmittedDateTime());
-			
-			assertEquals(RestoreStatus.Pending, restoreRequest.getCurrentStatus());
+			assertEquals(RestoreStatus.Pending, origRestoreRequest.getCurrentStatus());
 			
 		} catch (Exception e) {
 		
@@ -157,6 +166,25 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			fail(String.format("Error: %s", e.getMessage()));
 		}
 		
+	}
+	
+	@Test
+	public void queryRestoreRequestByRequestID() {
+		try {									
+			BackupRestoreRequest origRestoreRequest = createBackupRestoreRequest();
+			
+			origRestoreRequest =  restoreSvc.addRestoreRequest(origRestoreRequest);
+												
+			BackupRestoreRequest newRestoreRequest = restoreSvc.getRestoreRequestByRequestID(origRestoreRequest.getRequestID());
+			
+			compareRestoreRequests(newRestoreRequest, origRestoreRequest, false);
+		} catch (Exception e) {
+		
+			logger.error("Error: ", e);
+			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
+		}
 	}
 	
 	@Test
@@ -216,7 +244,8 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 																		trackerList, 
 																		NotifyType.None, 
 																		String.format("test target %s", this.backupClient.getClientID().toString()), 
-																		String.format("test parameter %s", this.backupClient.getClientID().toString()));
+																		String.format("test parameter %s", this.backupClient.getClientID().toString()),
+																		false);
 		return restoreRequest;
 	}
 	
@@ -262,18 +291,47 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 	}
 	
 	@Test
-	public void cancelRestoreRequest() {
+	public void updateRestoreRequest() {
 								
-		try {											
-			BackupRestoreRequest restoreRequest = createBackupRestoreRequest();			
+		try {			
+			BackupRestoreRequest origRestoreRequest = createBackupRestoreRequest();			
 									
-			restoreRequest = restoreSvc.addRestoreRequest(restoreRequest);			
+			origRestoreRequest = restoreSvc.addRestoreRequest(origRestoreRequest);			
 			
-			restoreSvc.cancelRestoreRequestForID(restoreRequest.getRequestID());
+			origRestoreRequest.setSubmitterId("new submitter");
+			//TODO Add when more than one type is supported
+			//origRestoreRequest.setNotifyType(NotifyType.Email);
+			origRestoreRequest.setNotifyTarget("new notify target");
+			origRestoreRequest.setNotifyParameter("new notify parameter");
+			origRestoreRequest.setIncludeSubdirectories(!origRestoreRequest.isIncludeSubdirectories());
+			origRestoreRequest.getRequestedFileTrackerIDs().clear();;
+			origRestoreRequest.getRequestedFileTrackerIDs().add(1001L);
+			origRestoreRequest.getRequestedFileTrackerIDs().add(2001L);
+			origRestoreRequest.getRequestedFileTrackerIDs().add(3001L);
 			
-			restoreRequest = restoreSvc.getRestoreRequestByRequestID(restoreRequest.getRequestID());
+			Calendar cal = Calendar.getInstance();
 			
-			assertEquals(RestoreStatus.Cancelled, restoreRequest.getCurrentStatus());			
+			origRestoreRequest.setSubmittedDateTime(cal.getTime());
+			
+			cal.add(Calendar.SECOND, 100);
+			
+			origRestoreRequest.setProcessingStartDateTime(cal.getTime());
+			
+			cal.add(Calendar.SECOND, 200);
+			
+			origRestoreRequest.setCompletedDateTime(cal.getTime());
+			
+			origRestoreRequest.setErrorMessage("new error");
+			
+			origRestoreRequest.setRestoreResultsURLs(new ArrayList<String>());
+			origRestoreRequest.getRestoreResultsURLs().add("New URL 1");
+			origRestoreRequest.getRestoreResultsURLs().add("New URL 2");
+			
+			origRestoreRequest.setCurrentStatus(RestoreStatus.Success);	
+			
+			BackupRestoreRequest newRestoreRequest = restoreSvc.updateRestoreRequest(origRestoreRequest);
+			
+			compareRestoreRequests(newRestoreRequest, origRestoreRequest, false);			
 			
 		} catch (Exception e) {
 		
@@ -283,9 +341,9 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			fail(String.format("Error: %s", e.getMessage()));
 		}		
 	}
-	
+		
 	@Test
-	public void generateValidationExceptinos() {
+	public void generateValidationExceptions() {
 						
 		try {	
 			
@@ -313,6 +371,18 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 		        assertThat(ex.getMessage(), containsString("BackupRestoreRequest submitter ID can't be null or empty"));
 		    }		
 			
+			restoreRequest.setSubmitterId("test submitter");
+						
+			this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Pending);
+			
+			this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
+			
+			try {
+				restoreSvc.addRestoreRequest(restoreRequest);
+		        fail("Expected a validation exception to be thrown");
+		    } catch (Exception ex) {
+		        assertThat(ex.getMessage(), containsString("Invalid status for tracker ID"));
+		    }
 			
 			//TODO Add if there is a way to set the completed state
 //			restoreRequest.setSubmitterId("test");
@@ -335,5 +405,83 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 		}
 		
 	}
+
+
+	@Test
+	public void sendRequestToProcessingQueue() {
+						
+		try {
+			
+			BackupRestoreRequest restoreRequest1 = createBackupRestoreRequest();
+			BackupRestoreRequest restoreRequest2 = createBackupRestoreRequest();
+			
+			restoreRequest1 = this.restoreSvc.addRestoreRequest(restoreRequest1);
+			
+			assertTrue(this.restoreRequestHandlerTest.queueHasRequests());
+			
+			restoreRequest2 = this.restoreSvc.addRestoreRequest(restoreRequest2);
+
+			BackupRestoreRequest queuedRequest1 = this.restoreRequestHandlerTest.retreiveNextRestoreRequest();
+			BackupRestoreRequest queuedRequest2 = this.restoreRequestHandlerTest.retreiveNextRestoreRequest();
+			
+			assertFalse(this.restoreRequestHandlerTest.queueHasRequests());
+			
+			assertEquals(queuedRequest1.getRequestID(), restoreRequest1.getRequestID());
+			assertEquals(queuedRequest2.getRequestID(), restoreRequest2.getRequestID());
+			
+			assertNotNull(queuedRequest1.getSubmittedDateTime());
+			assertNotNull(queuedRequest2.getSubmittedDateTime());		
+					
+		} catch (Exception e) {
+			logger.error("Error: ", e);
+			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
+		}			
+	}
 	
+
+	private void compareRestoreRequests(BackupRestoreRequest newRestoreRequest, BackupRestoreRequest origRestoreRequest, boolean isNewRequest) throws Exception {
+		
+		assertNotNull(newRestoreRequest);
+		assertEquals(newRestoreRequest.getClientID(), origRestoreRequest.getClientID());		
+		assertEquals(newRestoreRequest.getSubmitterId(), origRestoreRequest.getSubmitterId());
+		assertEquals(newRestoreRequest.getNotifyType(), origRestoreRequest.getNotifyType());
+		assertEquals(newRestoreRequest.getNotifyTarget(), origRestoreRequest.getNotifyTarget());
+		assertEquals(newRestoreRequest.getNotifyParameter(), origRestoreRequest.getNotifyParameter());
+		assertEquals(newRestoreRequest.isIncludeSubdirectories(), origRestoreRequest.isIncludeSubdirectories());
+		assertNotNull(newRestoreRequest.getRequestedFileTrackerIDs());
+		assertEquals(newRestoreRequest.getRequestedFileTrackerIDs().size(), origRestoreRequest.getRequestedFileTrackerIDs().size());
+		
+		for(int i = 0; i < newRestoreRequest.getRequestedFileTrackerIDs().size(); i++) {				
+			assertEquals(newRestoreRequest.getRequestedFileTrackerIDs().get(i), origRestoreRequest.getRequestedFileTrackerIDs().get(i));
+		}			
+		
+		if( isNewRequest ) {
+			assertNotNull(newRestoreRequest.getSubmittedDateTime());
+			assertNull(newRestoreRequest.getProcessingStartDateTime());
+			assertNull(newRestoreRequest.getCompletedDateTime());
+			assertNull(newRestoreRequest.getErrorMessage());
+			assertNull(newRestoreRequest.getRestoreResultsURLs());
+		} else {
+			assertEquals(newRestoreRequest.getRequestID(), origRestoreRequest.getRequestID());
+			assertEquals(newRestoreRequest.getSubmittedDateTime(), origRestoreRequest.getSubmittedDateTime());
+			assertEquals(newRestoreRequest.getCompletedDateTime(), origRestoreRequest.getCompletedDateTime());
+			assertEquals(newRestoreRequest.getProcessingStartDateTime(), origRestoreRequest.getProcessingStartDateTime());
+			assertEquals(newRestoreRequest.getCurrentStatus(), origRestoreRequest.getCurrentStatus());
+			
+			if( null == origRestoreRequest.getRestoreResultsURLs() ) {
+				assertNull(newRestoreRequest.getRestoreResultsURLs());
+			} else {
+				assertNotNull(newRestoreRequest.getRestoreResultsURLs());
+				
+				assertEquals(newRestoreRequest.getRestoreResultsURLs().size(), origRestoreRequest.getRestoreResultsURLs().size());
+				
+				for(int i = 0; i < newRestoreRequest.getRestoreResultsURLs().size(); i++) {				
+					assertEquals(newRestoreRequest.getRestoreResultsURLs().get(i), origRestoreRequest.getRestoreResultsURLs().get(i));
+				}				
+			}
+		}		
+	}
+
 }

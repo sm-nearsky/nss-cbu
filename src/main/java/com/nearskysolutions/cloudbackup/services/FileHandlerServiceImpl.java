@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.zip.GZIPOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +18,13 @@ import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataBatchRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileDataPacketRepository;
 import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
+import com.nearskysolutions.cloudbackup.util.FileZipUtils;
 
 @Component 
 public class FileHandlerServiceImpl implements FileHandlerService {
@@ -237,9 +237,9 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 				fos.close();
 				fos = null;
 				
-				finalSaveFile = new File(String.format("%s.gz",tempSaveFile.getAbsolutePath()));		        
+				finalSaveFile = new File(String.format("%s.zip",tempSaveFile.getAbsolutePath()));		        
 								
-				createGZipFileOutput(tempSaveFile, finalSaveFile);
+				FileZipUtils.CreateZipFileOutput(tempSaveFile, finalSaveFile);
 				
 				BackupFileDataPacket dataPacket = new BackupFileDataPacket(fileBatch.getFileBatchID(),
 																		   fileTracker.getBackupFileTrackerID(),
@@ -282,12 +282,10 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 					fos.close();
 					fos = null;
 					
-					finalSaveFile = new File(String.format("%s.gz",tempSaveFile.getAbsolutePath()));		        
+					finalSaveFile = new File(String.format("%s.zip",tempSaveFile.getAbsolutePath()));		        
 					
-					createGZipFileOutput(tempSaveFile, finalSaveFile);
-					
-					tempSaveFile.delete();
-					
+					FileZipUtils.CreateZipFileOutput(tempSaveFile, finalSaveFile);
+															
 			        logger.info(String.format("Completed writing %d bytes to file: %s", finalSaveFile.length(), finalSaveFile.getAbsolutePath()));
 			        
 			        
@@ -322,7 +320,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 			}
 			
 			if( null != tempSaveFile && tempSaveFile.exists() ) {
-				try {
+				try {					
 					tempSaveFile.delete();
 				} catch (Exception e) {}
 			}
@@ -332,46 +330,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 	}
 
 
-	private void createGZipFileOutput(File sourceFile, File destFile) throws IOException {
-		
-		GZIPOutputStream gos = null;
-		FileInputStream gzipIn = null;
-		int byteCount;
-		byte[] readBytes = new byte[1024];
-		
-		logger.info(String.format("Saving compressed data to final file: %s", destFile.getAbsolutePath()));
-		
-		try
-		{
-			gos = new GZIPOutputStream(new FileOutputStream(destFile));
-		
-		    gzipIn = new FileInputStream(sourceFile);
-		    
-		    while ((byteCount = gzipIn.read(readBytes)) > 0) {
-		    	gos.write(readBytes, 0, byteCount);
-		    }
-		    			        
-			gos.finish();
-			gos.close();
-			gos = null;
-		
-			gzipIn.close();
-			gzipIn = null;	
-			
-		} catch (IOException ex) {		
-			throw ex;		
-		} finally {
-				
-			
-			if(null != gos) {
-				gos.close();
-			}
-			
-			if(null != gzipIn) {
-				gzipIn.close();
-			}		
-		}
-	}
+	
 	
 	@Override 
 	public void sendBatchToProcessingQueue(BackupFileDataBatch fileBatch) throws Exception {		

@@ -11,6 +11,9 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -18,6 +21,8 @@ import org.hibernate.annotations.GenericGenerator;
 
 @Entity
 @Table(name="backup_restore_request")
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
 public class BackupRestoreRequest {
 	
 	@Id
@@ -59,6 +64,9 @@ public class BackupRestoreRequest {
 	@Column(name="current_status")
 	private RestoreStatus currentStatus;
 	
+	@Column(name="include_subdirectories")
+	private boolean includeSubdirectories;
+	
 	//@LazyCollection(LazyCollectionOption.FALSE)
 	@Fetch(FetchMode.SELECT)	
 	@ElementCollection(fetch = FetchType.EAGER)	
@@ -87,7 +95,8 @@ public class BackupRestoreRequest {
 								List<Long> trackerIds, 
 								NotifyType notifyType, 
 								String notifyTarget, 
-								String notifyParameter) throws Exception{
+								String notifyParameter,
+								boolean includeSubdirectories) throws Exception{
 		
 		if( null == clientID) {
 			throw new Exception("Client ID can't be null");
@@ -106,7 +115,8 @@ public class BackupRestoreRequest {
 		this.requestedFileTrackerIDs = trackerIds;
 		this.notifyType = notifyType;
 		this.notifyTarget = notifyTarget;
-		this.notifyParameter = notifyParameter;		
+		this.notifyParameter = notifyParameter;	
+		this.includeSubdirectories = includeSubdirectories;
 	}
 	
 	public UUID getRequestID() {
@@ -183,6 +193,14 @@ public class BackupRestoreRequest {
 
 	public void setErrorMessage(String errorMessage) {
 		this.errorMessage = errorMessage;
+	}
+	
+	public boolean isIncludeSubdirectories() {
+		return includeSubdirectories;
+	}
+
+	public void setIncludeSubdirectories(boolean includeSubdirectories) {
+		this.includeSubdirectories = includeSubdirectories;
 	}
 
 	public RestoreStatus getCurrentStatus() {
