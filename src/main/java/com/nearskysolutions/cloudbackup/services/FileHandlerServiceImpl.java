@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig;
+import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
@@ -161,6 +163,9 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 			throw new IOException(String.format("File %s doesn't exist or is not a directory", dir));
 		}
 		
+		//Add root to collection
+		files.add(dirFile);
+		
 		collectFileList(dirFile, files);
 		
 		return files;
@@ -281,14 +286,16 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 					
 					fos.close();
 					fos = null;
-					
+										
 					finalSaveFile = new File(String.format("%s.zip",tempSaveFile.getAbsolutePath()));		        
 					
 					FileZipUtils.CreateZipFileOutput(tempSaveFile, finalSaveFile);
-															
-			        logger.info(String.format("Completed writing %d bytes to file: %s", finalSaveFile.length(), finalSaveFile.getAbsolutePath()));
-			        
-			        
+					
+					logger.info(String.format("Completed writing %d bytes to file: %s", finalSaveFile.length(), finalSaveFile.getAbsolutePath()));
+					
+					tempSaveFile.delete();
+				    tempSaveFile = null;
+				    
 			        fileCount += 1;
 			        
 					BackupFileDataPacket dataPacket = new BackupFileDataPacket(fileBatch.getFileBatchID(),
@@ -447,6 +454,5 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 		logger.info(String.format("All packets removed from queue for batch ID: %d", fileBatch.getFileBatchID()));
 		
 	}
-
 	
 }

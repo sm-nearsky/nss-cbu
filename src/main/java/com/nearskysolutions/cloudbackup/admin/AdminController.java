@@ -1,5 +1,6 @@
 package com.nearskysolutions.cloudbackup.admin;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,9 +18,13 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
-import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;;
+import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
+import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
+import com.nearskysolutions.cloudbackup.services.FileHandlerService;;
 
 @RestController
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
@@ -31,6 +36,12 @@ public class AdminController {
 	
 	@Autowired 
 	private BackupRestoreRequestService restoreSvc;
+	
+	@Autowired 
+	private BackupFileDataService backupDataSvc;
+	
+	@Autowired 
+	private FileHandlerService fileSvc;
 	
 	Logger logger = LoggerFactory.getLogger(AdminController.class);
 	
@@ -288,4 +299,35 @@ public class AdminController {
 		return retVal;
     }
 	
+	//For testing only, won't work on server
+	@RequestMapping(value="/doFullBackup/{clientID}", method=RequestMethod.POST)
+    public ResponseEntity<Void> doFullBackup(@PathVariable UUID clientID) {
+		
+		logger.trace("In AdminController.doFullBackup()");
+		
+		ResponseEntity<Void> retVal;
+		
+		try {
+									
+			List<BackupFileTracker> backupTrackers = backupDataSvc.getAllBackupTrackersForClient(clientID);
+			BackupFileDataBatch fileBatch = this.backupDataSvc.addBackupFileDataBatch(new BackupFileDataBatch(clientID));
+			
+			for(BackupFileTracker tracker : backupTrackers) {								
+				this.fileSvc.createPacketsForFile(fileBatch, tracker);
+			}	
+			
+			this.fileSvc.sendBatchToProcessingQueue(fileBatch);
+			
+			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.OK);
+		
+		} catch (Exception ex) {
+			logger.error("Error in AdminController.doFullBackup", ex);
+			
+			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
+		
+		logger.trace("Completed AdminController.doFullBackup()");
+		
+		return retVal;		
+    }
 }

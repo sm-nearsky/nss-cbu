@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -117,6 +119,10 @@ public class FileZipUtils {
 				zos.putNextEntry(ze);
 				fin = new FileInputStream(sourceFile);
 						
+				//TODO Note that Windows file attributes such as hidden and read only
+				//     are not preserved using this method a different zip library would
+				//     probably need to be used
+				
 				while (0 < (byteCount = fin.read(buffer, 0, bufferSize))) {
 					zos.write(buffer, 0, byteCount);
 				}
@@ -171,6 +177,46 @@ public class FileZipUtils {
 						sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
 		
 		FileOutputStream fos = null;
+		
+    	try{
+    		
+    		logger.info(String.format("Creating single file from zip archive: %s to destination file: %s", 
+    									sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
+    		
+    		fos = new FileOutputStream(destFile);
+    		
+    		WriteZipBytesToOutput(sourceZipFile, fos);    		
+    		
+    		logger.info(String.format("Completing single file write from zip archive: %s to destination file: %s", 
+    									sourceZipFile.getName(), destFile.getAbsolutePath()));
+    		
+    	} finally {    		    		
+    		
+    		if( null != fos ) {
+    			logger.info(String.format("Closing output file: %s for zip archive: %s", destFile.getName(), sourceZipFile.getName()));
+    			
+    			fos.close();
+    		}
+    		
+    	}
+    	
+    	logger.trace(String.format("Completing FileZipUtils.CreateSingleFileFromZip(File sourceZipFile, File destFile): sourceFile - %s, destFile - %s, ",
+				sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
+	}	
+	
+	public static void WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream) throws Exception {
+		
+		if( null == sourceZipFile || false == sourceZipFile.exists() ) { 
+			throw new Exception("sourceFile reference null or doesn't exist");
+		}
+		
+		if( null == ostream ) { 
+			throw new Exception("ostream reference can't be null");
+		}
+		
+		logger.trace(String.format("Starting FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream): sourceFile - %s",
+									sourceZipFile.getAbsolutePath()));
+				
 		FileInputStream fis = null;
 		ZipInputStream zis = null;
 		ZipEntry ze = null;
@@ -181,10 +227,9 @@ public class FileZipUtils {
     		byte[] buffer = new byte[bufferSize];
     		int byteCount;
     		
-    		logger.info(String.format("Creating single file from zip archive: %s to destination file: %s", 
-    									sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
-    		
-    		fos = new FileOutputStream(destFile);
+    		logger.info(String.format("Creating single file from zip archive: %s to output stream", 
+    									sourceZipFile.getAbsolutePath()));
+    		    		
     		fis = new FileInputStream(sourceZipFile);
     		zis = new ZipInputStream(fis);
     	    		
@@ -192,11 +237,11 @@ public class FileZipUtils {
     		ze = zis.getNextEntry();
     		
     		while (0 < (byteCount = zis.read(buffer, 0, bufferSize))) {
-    			fos.write(buffer, 0, byteCount);
+    			ostream.write(buffer, 0, byteCount);
 			}
     		
-    		logger.info(String.format("Completing single file write from zip archive: %s to destination file: %s", 
-    									sourceZipFile.getName(), destFile.getAbsolutePath()));
+    		logger.info(String.format("Completing single file write from zip archive: %s to output stream", 
+    									sourceZipFile.getName()));
     		
     	} finally {
     		    		
@@ -213,16 +258,9 @@ public class FileZipUtils {
     		if( null != fis ) {
     			fis.close();
     		}
-    		
-    		if( null != fos ) {
-    			logger.info(String.format("Closing output file: %s for zip archive: %s", destFile.getName(), sourceZipFile.getName()));
-    			
-    			fos.close();
-    		}
-    		
     	}
     	
-    	logger.trace(String.format("Completing FileZipUtils.CreateSingleFileFromZip(File sourceZipFile, File destFile): sourceFile - %s, destFile - %s, ",
-				sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
-	}	
+    	logger.trace(String.format("Completing FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream): sourceFile - %s",
+				sourceZipFile.getAbsolutePath()));
+	}
 }
