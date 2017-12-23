@@ -104,8 +104,9 @@ public class CloudBackupClient  implements CommandLineRunner {
 						
 								
 				BackupFileDataBatch fileBatch = null;
-								
-				for(BackupFileTracker tracker : lstTrackers) {
+				int fileProcCount = 0;
+				
+				for(BackupFileTracker tracker : lstTrackers) {					
 					if( tracker.isFileChanged() ) {
 						if( fileBatch == null ) {
 							fileBatch = this.dataSvc.addBackupFileDataBatch(new BackupFileDataBatch(clientId));
@@ -113,7 +114,10 @@ public class CloudBackupClient  implements CommandLineRunner {
 							logger.info("Changed file or files found, creating batch with ID: %d", fileBatch.getFileBatchID());
 						}
 						
-						fileHandlerSvc.createPacketsForFile(fileBatch, tracker);			
+						
+						fileHandlerSvc.createPacketsForFile(fileBatch, tracker);
+						
+						fileProcCount += 1;					
 					}
 				}								
 				

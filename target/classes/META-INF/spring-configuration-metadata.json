@@ -20,7 +20,8 @@
     {
       "name": "com.nearskysolutions.cloudbackup.admin.file-packet-size",
       "type": "java.lang.Integer",
-      "sourceType": "com.nearskysolutions.cloudbackup.admin.AdminServicesConfig"
+      "sourceType": "com.nearskysolutions.cloudbackup.admin.AdminServicesConfig",
+      "defaultValue": 0
     },
     {
       "name": "com.nearskysolutions.cloudbackup.admin.repo-key",
@@ -48,6 +49,11 @@
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
     },
     {
+      "name": "com.nearskysolutions.cloudbackup.client.max-file-proc-count",
+      "type": "java.lang.Integer",
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
+    },
+    {
       "name": "com.nearskysolutions.cloudbackup.client.packet-staging-dir",
       "type": "java.lang.String",
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig"
@@ -70,7 +76,8 @@
     {
       "name": "com.nearskysolutions.cloudbackup.server.file-packet-size",
       "type": "java.lang.Integer",
-      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig"
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0
     },
     {
       "name": "com.nearskysolutions.cloudbackup.server.repo-key",

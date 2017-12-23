@@ -79,7 +79,8 @@ public class RestoreRequestHandlerLocalQueue implements RestoreRequestHandlerQue
 			
 			fos = new FileOutputStream(outputFileName);
 			
-			logger.info(String.format("Writing object data to queue for restore request ID: %s:", restoreRequest.getRequestID()));
+			logger.info(String.format("Writing object data to queue for restore request ID: %s: to dir: %s", 
+										restoreRequest.getRequestID(), this.localRestoreRequestQueueDir));
 
 			JAXBContext jc = JAXBContext.newInstance( BackupRestoreRequest.class );
 			Marshaller m = jc.createMarshaller();

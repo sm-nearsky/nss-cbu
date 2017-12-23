@@ -40,30 +40,15 @@ public class CloudBackupServer  implements CommandLineRunner {
 		
 		try {
 			
-			boolean bFoundCommand = false;
+			String restoreRequestsArg = System.getProperty("processRestoreRequests");
 			
-			if( args != null && args.length > 0 ) {
-				for(int i = 0; i < args.length; i++) {
-					if( args[i].equalsIgnoreCase("processRestoreRequests") ) {
-						this.processRestoreRequests();
-						bFoundCommand = true;
-					}
-				}
+			if(null != restoreRequestsArg && restoreRequestsArg.equalsIgnoreCase("true")) {
+				logger.info("Processing restore requests...");
+				this.processRestoreRequests();			
 			}
 			
-			if(false == bFoundCommand) {
-				//TODO Can't re-run batch on exception		
-				this.processBackupPackets();
-			}
-			
-//			List<Long> trackerIDList = new ArrayList<Long>();
-//			trackerIDList.add(26L);
-//			trackerIDList.add(3L);
-//			
-//			this.backupStorageHandler.recreateTrackerFiles(UUID.fromString("57649898-ec95-48ab-a257-4bf7cbb971c9"), 
-//					 										trackerIDList, 
-//					 										"/C:/tmp/nssCbuFileRestore", 
-//					 										true);
+			logger.info("Processing backup packets...");
+			this.processBackupPackets();			
 			
 			//Force exit to stop HTTP server
 			System.exit(0);

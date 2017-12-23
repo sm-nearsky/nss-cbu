@@ -51,6 +51,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 	
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
+
 	
 	@Override 
 	public List<BackupFileTracker> updateFileTrackerListing(UUID clientID, 
@@ -65,10 +66,10 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 		}
 		
 		List<BackupFileTracker> trackerFileList = new ArrayList<BackupFileTracker>();
-						
+				
 		for(BackupFileTracker tracker : trackerRepo.findByClientID(clientID)) {
-			if(tracker.getSourceDirectory().toUpperCase().startsWith(rootDir.toUpperCase())) {
-				trackerFileList.add(tracker);
+			if(tracker.getSourceDirectory().toUpperCase().startsWith(rootDir.toUpperCase())) {				
+				trackerFileList.add(tracker);				
 			}			
 		}
 		
@@ -99,7 +100,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 				}
 			}
 			
-			if( false == fileFound ) {
+			if(false == fileFound) {
 				logger.info(String.format("Existing file not found, tracker added: %s", currentFile.getAbsolutePath()));
 				
 				BackupFileTracker newTracker = new BackupFileTracker(clientID, repoType, repoLoc, repoKey, currentFile.getAbsolutePath());
@@ -109,7 +110,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 				
 				newTracker = this.trackerRepo.save(newTracker);
 				
-				trackerFileList.add(newTracker);
+				trackerFileList.add(newTracker);				
 			}			
 		}
 		
@@ -141,7 +142,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 			}
 			
 			if(tracker.isFileChanged()) {				
-				trackerRepo.save(tracker);
+				trackerRepo.save(tracker);				
 			}			
 		}
 		

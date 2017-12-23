@@ -4,7 +4,7 @@
 
   <groupId>com.nearskysolutions.cloudbackup</groupId>
   <artifactId>NssCloudBackupClient</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.9</version>
   <packaging>jar</packaging>
 
   <name>NssCloudBackupClient</name>
@@ -12,6 +12,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+<!-- start-class>com.nearskysolutions.cloudbackup.util.CloudBackupStartup</start-class> -->	
     <java.version>1.8</java.version>
   </properties>
 
@@ -108,13 +109,41 @@
 		<groupId>com.google.code.gson</groupId>
 		<artifactId>gson</artifactId>
 	</dependency>
+	<!-- https://mvnrepository.com/artifact/javax.xml.bind/jaxb-api -->
+	<dependency>
+	    <groupId>javax.xml.bind</groupId>
+	    <artifactId>jaxb-api</artifactId>
+	    <version>2.3.0</version>
+	</dependency>	
   </dependencies>  
 
 	<build>
+	    <resources>
+	      <resource>
+	        <directory>src/main/resources</directory>
+	        <!-- <excludes>
+	         <exclude>**/*LOCAL*.properties</exclude>
+	          <exclude>**/*UNIT*.properties</exclude>
+	          <exclude>**/logback-test*.xml</exclude>
+	          <exclude>**/*.sql</exclude>		          
+	        </excludes> -->
+	      </resource>      
+	    </resources>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>com.nearskysolutions.cloudbackup.util.CloudBackupStartup</mainClass>
+		        	<!-- exclude logging and config files -->					
+					<executions>
+	                    <execution>
+	                        <goals>
+	                            <goal>repackage</goal>
+	                        </goals>
+	                    </execution>
+	                </executions>					
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

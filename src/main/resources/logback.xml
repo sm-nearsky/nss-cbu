@@ -1,4 +1,6 @@
 <configuration>
+	<property name="logFolder" value="${logback.folder.location}" />
+	<property name="logName" value="${logback.file.name}" />
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">    
     <encoder>
@@ -7,10 +9,11 @@
   </appender>
 
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>/tmp/logFile.log</file>
+    <file>${logback.folder.location}/${logback.file.name}</file>
+    <!--<file>/G:/nssCbu/logs/backup.log</file>-->
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- daily rollover -->
-      <fileNamePattern>logFile.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>${logback.folder.location}/backup_%d{yyyy-MM-dd}_${logback.file.name}</fileNamePattern>
 
       <!-- keep 30 days' worth of history capped at 3GB total size -->
       <maxHistory>30</maxHistory>
@@ -19,11 +22,11 @@
     </rollingPolicy>
 
     <encoder>
-      <pattern>%-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender> 
   
   <root level="info">
-    <appender-ref ref="STDOUT" />
+    <appender-ref ref="FILE" />
   </root>
 </configuration>

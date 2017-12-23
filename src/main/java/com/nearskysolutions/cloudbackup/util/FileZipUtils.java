@@ -131,7 +131,7 @@ public class FileZipUtils {
 				
 			} finally {
 				
-				logger.info("Closing zip file for source: %s", sourceFile.getName());
+				logger.info(String.format("Closing zip file for source: %s", sourceFile.getName()));
 				
 				if( null != fin ) {
 					fin.close();
@@ -141,7 +141,7 @@ public class FileZipUtils {
 					zos.closeEntry();
 				}
 				
-				logger.info("Zip file close complete for for source: %s", sourceFile.getName());
+				logger.info(String.format("Zip file close complete for for source: %s", sourceFile.getName()));
 			}
 			
 		} else if( null != sourceFile.listFiles() && 0 < sourceFile.listFiles().length ) {

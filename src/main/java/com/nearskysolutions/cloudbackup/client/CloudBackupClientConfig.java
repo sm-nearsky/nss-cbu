@@ -23,6 +23,8 @@ public class CloudBackupClientConfig {
 		
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
+	@Value( "${com.nearskysolutions.cloudbackup.general.maxFileProcCount}" )
+	private int maxFileProcCount;
 	private String packetStagingDir;
 	private UUID clientId;
 	private String repoType;
@@ -43,6 +45,14 @@ public class CloudBackupClientConfig {
 
 	public void setFilePacketSize(int filePacketSize) {
 		this.filePacketSize = filePacketSize;
+	}
+	
+	public int getMaxFileProcCount() {
+		return filePacketSize;
+	}
+
+	public void setMaxFileProcCount(int maxFileProcCount) {
+		this.maxFileProcCount = maxFileProcCount;
 	}
 
 	public UUID getClientId() {
