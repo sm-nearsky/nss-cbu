@@ -1,5 +1,6 @@
 package com.nearskysolutions.cloudbackup.client;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -11,34 +12,25 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ComponentScan(basePackages="com.nearskysolutions.cloudbackup.client,"+
-							"com.nearskysolutions.cloudbackup.common,"+
-							"com.nearskysolutions.cloudbackup.data,"+
-							"com.nearskysolutions.cloudbackup.services,"+
-							"com.nearskysolutions.cloudbackup.prod.beans")
-@ImportResource("classpath:bean-client-config.xml")
+							"com.nearskysolutions.cloudbackup.common,"+			
+							"com.nearskysolutions.cloudbackup.queue,"+
+							"com.nearskysolutions.cloudbackup.util")
+@ImportResource("classpath:bean-client-config.xml")                                   
 @ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.client")
-@PropertySource({"classpath:persistence-${env}.properties",	
-				 "classpath:application-client-${env}.properties"})
+@PropertySource({"classpath:application-client-${env}.properties"})
 public class CloudBackupClientConfig {
 		
 	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
-	@Value( "${com.nearskysolutions.cloudbackup.general.maxFileProcCount}" )
-	private int maxFileProcCount;
-	private String packetStagingDir;
+	private List<String> clientDirectoryIncludes;
 	private UUID clientId;
 	private String repoType;
 	private String repoLoc;
 	private String repoKey;
-	
-	public String getPacketStagingDir() {
-		return packetStagingDir;
-	}
-
-	public void setPacketStagingDir(String packetStagingDir) {
-		this.packetStagingDir = packetStagingDir;
-	}
-
+	private String backupClientAdminSvcUrl;
+	private String backupTrackerAdminSvcUrl;
+	private boolean isClientTestMode;
+		
 	public int getFilePacketSize() {
 		return filePacketSize;
 	}
@@ -47,12 +39,12 @@ public class CloudBackupClientConfig {
 		this.filePacketSize = filePacketSize;
 	}
 	
-	public int getMaxFileProcCount() {
-		return filePacketSize;
+	public List<String> getClientDirectoryIncludes() {
+		return clientDirectoryIncludes;
 	}
 
-	public void setMaxFileProcCount(int maxFileProcCount) {
-		this.maxFileProcCount = maxFileProcCount;
+	public void setClientDirectoryIncludes(List<String> clientDirectoryIncludes) {
+		this.clientDirectoryIncludes = clientDirectoryIncludes;
 	}
 
 	public UUID getClientId() {
@@ -87,4 +79,28 @@ public class CloudBackupClientConfig {
 		this.repoKey = repoKey;
 	}
 	
+	public String getBackupClientAdminSvcUrl() {
+		return backupClientAdminSvcUrl;
+	}
+
+	public void setBackupClientAdminSvcUrl(String backupClientAdminSvcUrl) {
+		this.backupClientAdminSvcUrl = backupClientAdminSvcUrl;
+	}
+
+	public String getBackupTrackerAdminSvcUrl() {
+		return backupTrackerAdminSvcUrl;
+	}
+
+	public void setBackupTrackerAdminSvcUrl(String backupTrackerAdminSvcUrl) {
+		this.backupTrackerAdminSvcUrl = backupTrackerAdminSvcUrl;
+	}
+	
+	public boolean isClientTestMode() {
+		return isClientTestMode;
+	}
+
+	public void setIsClientTestMode(boolean isClientTestMode) {
+		this.isClientTestMode = isClientTestMode;
+	}
+
 }

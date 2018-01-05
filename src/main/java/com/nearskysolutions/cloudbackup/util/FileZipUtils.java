@@ -53,25 +53,19 @@ public class FileZipUtils {
 									sourceFile.getAbsolutePath(), sourceDirIgnore, destFile.getAbsolutePath()));
 		
 		FileOutputStream fos = null;
-		ZipOutputStream zos = null;
-		
+				
     	try{
 
     		fos = new FileOutputStream(destFile);
-    		zos = new ZipOutputStream(fos);
-    	
+    		    	
     		logger.info(String.format("Starting zip for file/dir: %s, saving to dest file: %s, using ignore: %s", sourceFile.getAbsolutePath(), destFile.getAbsolutePath(), sourceDirIgnore));
     		
-    		addToZipFile(sourceFile, sourceDirIgnore, zos);
+    		FileZipUtils.CreateZipOutputToStream(sourceFile, sourceDirIgnore, fos);
     		
     		logger.info(String.format("Zip complete for file/dir: ", sourceFile.getAbsolutePath()));
     		    		    	   
     	} finally {
-    		if( null != zos ) {
-    			logger.info("Closing write to zip output");
-    			zos.close();
-    		}
-    		
+    		    		
     		if( null != fos ) {
     			logger.info(String.format("Closing write to destination file: %s", destFile.getName()));
     			fos.close();
@@ -82,23 +76,125 @@ public class FileZipUtils {
 									sourceFile.getAbsolutePath(), sourceDirIgnore, destFile.getAbsolutePath()));
 	}
 
+	public static void CreateZipOutputToStream(File sourceFile, OutputStream outputStream) throws Exception {
+		
+		if( null == sourceFile || false == sourceFile.exists() ) { 
+			throw new Exception("sourceFile reference null or doesn't exist");
+		}
+		
+		if( null == outputStream ) { 
+			throw new Exception("outputStream reference null");
+		}
+		
+		logger.trace(String.format("Starting FileZipUtils.CreateZipOutputToStream(File sourceFile, OutputStream outputStream): sourceFile - %s",
+				sourceFile.getAbsolutePath()));
+		
+		logger.info(String.format("Creating zip to output stream from source file: %s", sourceFile.getAbsolutePath()));
+		
+		FileZipUtils.CreateZipOutputToStream(sourceFile, null, outputStream);
+		
+		logger.trace(String.format("Completing FileZipUtils.CreateZipOutputToStream(File sourceFile, OutputStream outputStream): sourceFile - %s",
+				sourceFile.getAbsolutePath()));
+	}
 
-	private static void addToZipFile(File sourceFile, String sourceDirIgnore, ZipOutputStream zos) throws Exception {
+	public static void CreateZipOutputToStream(File sourceFile, String sourceDirIgnore, OutputStream outputStream) throws Exception {
 		
-		logger.trace(String.format("Starting FileZipUtils.addToZipFile(File sourceFile, String sourceDirIgnore, ZipOutputStream zos): sourceFile - %s, sourceDirIgnore - %s",
-				sourceFile.getAbsolutePath(), sourceDirIgnore));
+		if( null == sourceFile || false == sourceFile.exists() ) { 
+			throw new Exception("sourceFile reference null or doesn't exist");
+		}
 		
+		if( null == outputStream ) { 
+			throw new Exception("outputStream reference null");
+		}
+		
+		logger.trace(String.format("Starting FileZipUtils.CreateZipOutputToStream(File sourceFile, String sourceDirIgnore, OutputStream outputStream): sourceFile - %s, sourceDirIgnore - %s",
+									sourceFile.getAbsolutePath(), sourceDirIgnore));
+		
+		ZipOutputStream zos = null;
+				
+    	try{
+    		    		    	
+    		logger.info(String.format("Starting zip for file/dir: %s, saving to output stream using source dir ignore: %s", sourceFile.getAbsolutePath(), sourceDirIgnore));
+    		
+    		zos = new ZipOutputStream(outputStream);
+    		
+    		logger.info(String.format("Creating zip to output stream from source file: %s, with sourceDirIgnore: %s", sourceFile.getAbsolutePath(), sourceDirIgnore));
+    		
+    		FileZipUtils.CreateZipOutputToZos(sourceFile, sourceDirIgnore, zos);
+    		
+    		logger.info(String.format("Zip complete for file/dir: ", sourceFile.getAbsolutePath()));
+    		    		    	   
+    	} finally {
+    		
+    		logger.info("Closing zip stream for provided output");
+    		
+    		if( null != zos ) {
+    			zos.close();
+    		}
+    	}
+    	
+    	logger.trace(String.format("Completing FileZipUtils.CreateZipOutputToStream(File sourceFile, String sourceDirIgnore, OutputStream outputStream): sourceFile - %s, sourceDirIgnore - %s",
+									sourceFile.getAbsolutePath(), sourceDirIgnore));
+	}
+	
+	public static void CreateZipOutputToStream(InputStream inputStream, OutputStream outputStream, String entryName) throws Exception {
+		
+		if( null == inputStream ) { 
+			throw new Exception("inputStream reference null");
+		}
+		
+		if( null == outputStream ) { 
+			throw new Exception("outputStream reference null");
+		}
+		
+		if( null == entryName ) { 
+			throw new Exception("entryName reference null");
+		}
+		
+		logger.trace(String.format("Starting FileZipUtils.CreateZipOutputToStream(InputStream inputStream, OutputStream outputStream, String entryName): entryName: %s", entryName));
+		
+    	logger.info(String.format("Starting zip for input stream and saving to output stream with entry name: %s", entryName));
+    		
+    	ZipOutputStream zos = null;
+    	
+    	try
+    	{    		
+    		zos = new ZipOutputStream(outputStream);
+    		
+    		FileZipUtils.addToZipFile(inputStream, zos, entryName);
+    		
+    	} finally {
+    		
+    		logger.info("Closing zip stream for provided output");
+    		
+    		if( null != zos ) {
+    			zos.close();
+    		}
+    	}
+    		
+    	logger.info(String.format("Zip complete to output stream with entry name: %s", entryName));
+    	    	
+    	logger.trace(String.format("Completed FileZipUtils.CreateZipOutputToStream(InputStream inputStream, OutputStream outputStream, String entryName): entryName: %s", entryName));
+	}
+
+	private static void CreateZipOutputToZos(File sourceFile, String sourceDirIgnore, ZipOutputStream zos) throws Exception {
+		
+		if( null == sourceFile || false == sourceFile.exists() ) { 
+			throw new Exception("sourceFile reference null or doesn't exist");
+		}
+		
+		if( null == zos ) { 
+			throw new Exception("outputStream reference null");
+		}
+		
+		logger.trace(String.format("Starting FileZipUtils.CreateZipOutputToZos(File sourceFile, String sourceDirIgnore, ZipOutputStream outputStream): sourceFile - %s, sourceDirIgnore - %s",
+									sourceFile.getAbsolutePath(), sourceDirIgnore));
+				
 		if( false == sourceFile.isDirectory() ) {
-						
-			
-			int bufferSize = 4096;		
-			byte[] buffer = new byte[bufferSize];
-			int byteCount;
+				
 			String sourceDirFinal;
 			FileInputStream fin = null;
-			ZipEntry ze = null;
-			
-			
+						
 			if( null == sourceDirIgnore ) {
 				sourceDirFinal = sourceFile.getParent();
 			} else {
@@ -114,19 +210,11 @@ public class FileZipUtils {
 			try {
 				
 				logger.info(String.format("Saving file: %s to zip archive: %s", sourceFile.getName(), entryName));
-						
-				ze = new ZipEntry(entryName);
-				zos.putNextEntry(ze);
+					
 				fin = new FileInputStream(sourceFile);
-						
-				//TODO Note that Windows file attributes such as hidden and read only
-				//     are not preserved using this method a different zip library would
-				//     probably need to be used
 				
-				while (0 < (byteCount = fin.read(buffer, 0, bufferSize))) {
-					zos.write(buffer, 0, byteCount);
-				}
-				
+				FileZipUtils.addToZipFile(fin, zos, entryName);
+								
 				logger.info(String.format("Completed save for file: %s to zip archive: %s", sourceFile.getName(), entryName));
 				
 			} finally {
@@ -136,11 +224,7 @@ public class FileZipUtils {
 				if( null != fin ) {
 					fin.close();
 				}
-				
-				if( null != ze ) {					
-					zos.closeEntry();
-				}
-				
+								
 				logger.info(String.format("Zip file close complete for for source: %s", sourceFile.getName()));
 			}
 			
@@ -151,15 +235,58 @@ public class FileZipUtils {
 			File[] childFiles = sourceFile.listFiles();
 			
 			for(int i = 0; i < childFiles.length; i++) {
-				addToZipFile(childFiles[i], sourceDirIgnore, zos);
+				FileZipUtils.CreateZipOutputToZos(childFiles[i], sourceDirIgnore, zos);
 			}
 			
 		} else {
 			logger.info(String.format("No files found to process for zip archive in directory: %s", sourceFile.getName()));
-		}		
+		}	
 		
-		logger.trace(String.format("Completing FileZipUtils.addToZipFile(File sourceFile, String sourceDirIgnore, ZipOutputStream zos): sourceFile - %s, sourceDirIgnore - %s",
-				sourceFile.getAbsolutePath(), sourceDirIgnore));
+    	
+    	logger.trace(String.format("Completing FileZipUtils.CreateZipOutputToZos(File sourceFile, String sourceDirIgnore, OutputStream outputStream): sourceFile - %s, sourceDirIgnore - %s",
+									sourceFile.getAbsolutePath(), sourceDirIgnore));
+	}
+	
+
+	private static void addToZipFile(InputStream inputStream, ZipOutputStream zos, String entryName) throws Exception {
+		
+		logger.trace("Starting FileZipUtils.addToZipFile(InputStream inputStream, ZipOutputStream zos, String entryName)");
+		
+			
+		int bufferSize = 4096;		
+		byte[] buffer = new byte[bufferSize];
+		int byteCount;
+		ZipEntry ze = null;
+				
+		try {
+			
+			logger.info(String.format("Saving byte input to zip output as entry: %s", entryName));
+				
+			
+			ze = new ZipEntry(entryName);
+			zos.putNextEntry(ze);
+								
+			//TODO Note that Windows file attributes such as hidden and read only
+			//     are not preserved using this method a different zip library would
+			//     probably need to be used
+			
+			while (0 < (byteCount = inputStream.read(buffer, 0, bufferSize))) {
+				zos.write(buffer, 0, byteCount);
+			}
+			
+			logger.info(String.format("Completed save to zip entry: %s", entryName));
+			
+		} finally {
+			
+			logger.info(String.format("Closing zip entry: %s", entryName));
+			
+			if( null != ze ) {
+				logger.info("Closing zip entry");
+				zos.closeEntry();
+			}
+		}			
+					
+		logger.trace("Completing FileZipUtils.addToZipFile(InputStream inputStream, ZipOutputStream zos, String entryName)");
 		
 	}	
 
@@ -185,7 +312,7 @@ public class FileZipUtils {
     		
     		fos = new FileOutputStream(destFile);
     		
-    		WriteZipBytesToOutput(sourceZipFile, fos);    		
+    		WriteZipFileToOutput(sourceZipFile, fos);    		
     		
     		logger.info(String.format("Completing single file write from zip archive: %s to destination file: %s", 
     									sourceZipFile.getName(), destFile.getAbsolutePath()));
@@ -204,20 +331,56 @@ public class FileZipUtils {
 				sourceZipFile.getAbsolutePath(), destFile.getAbsolutePath()));
 	}	
 	
-	public static void WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream) throws Exception {
+	public static void WriteZipFileToOutput(File sourceZipFile, OutputStream outputStream) throws Exception {
 		
 		if( null == sourceZipFile || false == sourceZipFile.exists() ) { 
 			throw new Exception("sourceFile reference null or doesn't exist");
 		}
 		
-		if( null == ostream ) { 
+		if( null == outputStream ) { 
 			throw new Exception("ostream reference can't be null");
 		}
 		
-		logger.trace(String.format("Starting FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream): sourceFile - %s",
+		logger.trace(String.format("Starting FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream outputStream): sourceFile - %s",
 									sourceZipFile.getAbsolutePath()));
 				
 		FileInputStream fis = null;
+				
+    	try{
+    		    		    		
+    		logger.info(String.format("Creating single file from zip archive: %s to output stream", 
+    									sourceZipFile.getAbsolutePath()));
+    		    		
+    		fis = new FileInputStream(sourceZipFile);
+    		
+    		FileZipUtils.WriteZipInputToOutput(fis, outputStream);
+    		
+    		logger.info(String.format("Completing single file write from zip archive: %s to output stream", 
+    									sourceZipFile.getName()));
+    		
+    	} finally {
+    		      		    		
+    		if( null != fis ) {
+    			fis.close();
+    		}
+    	}
+    	
+    	logger.trace(String.format("Completing FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream outputStream): sourceFile - %s",
+				sourceZipFile.getAbsolutePath()));
+	}
+	
+	public static void WriteZipInputToOutput(InputStream inputStream, OutputStream outputStream) throws Exception {
+		
+		if( null == inputStream ) { 
+			throw new Exception("inputStream reference can't be null");
+		}
+		
+		if( null == outputStream ) { 
+			throw new Exception("outputStream reference can't be null");
+		}
+		
+		logger.trace("Starting FileZipUtils.WriteZipInputToOutput(InputStream inputStream, OutputStream outputStream)");
+				
 		ZipInputStream zis = null;
 		ZipEntry ze = null;
 		
@@ -227,21 +390,18 @@ public class FileZipUtils {
     		byte[] buffer = new byte[bufferSize];
     		int byteCount;
     		
-    		logger.info(String.format("Creating single file from zip archive: %s to output stream", 
-    									sourceZipFile.getAbsolutePath()));
-    		    		
-    		fis = new FileInputStream(sourceZipFile);
-    		zis = new ZipInputStream(fis);
+    		logger.info("Creating uncompressed output from zip input stream");
+    		
+    		zis = new ZipInputStream(inputStream);
     	    		
     		//Reading the entry is needed for the zip library to decompress the entry
     		ze = zis.getNextEntry();
     		
     		while (0 < (byteCount = zis.read(buffer, 0, bufferSize))) {
-    			ostream.write(buffer, 0, byteCount);
+    			outputStream.write(buffer, 0, byteCount);
 			}
     		
-    		logger.info(String.format("Completing single file write from zip archive: %s to output stream", 
-    									sourceZipFile.getName()));
+    		logger.info("Completd uncompressed output from zip input");
     		
     	} finally {
     		    		
@@ -250,17 +410,12 @@ public class FileZipUtils {
     		}
     		
     		if( null != zis ) {
-    			logger.info(String.format("Closing zip input file: %s", sourceZipFile.getName()));
+    			logger.info("Closing zip input stream");
     			
     			zis.close();
     		}
-    		
-    		if( null != fis ) {
-    			fis.close();
-    		}
     	}
     	
-    	logger.trace(String.format("Completing FileZipUtils.WriteZipBytesToOutput(File sourceZipFile, OutputStream ostream): sourceFile - %s",
-				sourceZipFile.getAbsolutePath()));
+    	logger.trace("Completed FileZipUtils.WriteZipInputToOutput(InputStream inputStream, OutputStream outputStream)");
 	}
 }

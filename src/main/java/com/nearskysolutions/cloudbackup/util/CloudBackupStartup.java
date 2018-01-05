@@ -1,6 +1,6 @@
 package com.nearskysolutions.cloudbackup.util;
 
-import com.nearskysolutions.cloudbackup.admin.AdminServicesApplication;
+import com.nearskysolutions.cloudbackup.admin.AdminServicesServer;
 import com.nearskysolutions.cloudbackup.client.CloudBackupClient;
 import com.nearskysolutions.cloudbackup.server.CloudBackupServer;
 
@@ -33,7 +33,7 @@ public class CloudBackupStartup {
 			
 			switch(rt) {
 				case Admin:
-					AdminServicesApplication.main(args);			
+					AdminServicesServer.main(args);			
 					break;
 					
 				case Server:

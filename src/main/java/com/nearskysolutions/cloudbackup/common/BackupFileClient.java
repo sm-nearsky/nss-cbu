@@ -17,8 +17,11 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.GenericGenerator;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name="backup_file_client")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BackupFileClient {
 	
 	@Id

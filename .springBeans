@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beansProjectDescription>
+	<version>1</version>
+	<pluginVersion><![CDATA[3.8.1.201607290748-RELEASE]]></pluginVersion>
+	<configSuffixes>
+		<configSuffix><![CDATA[xml]]></configSuffix>
+	</configSuffixes>
+	<enableImports><![CDATA[false]]></enableImports>
+	<configs>
+	</configs>
+	<autoconfigs>
+		<config>java:com.nearskysolutions.cloudbackup.admin.AdminServicesServer</config>
+		<config>java:com.nearskysolutions.cloudbackup.server.CloudBackupServer</config>
+		<config>java:com.nearskysolutions.cloudbackup.client.CloudBackupClient</config>
+	</autoconfigs>
+	<configSets>
+	</configSets>
+</beansProjectDescription>

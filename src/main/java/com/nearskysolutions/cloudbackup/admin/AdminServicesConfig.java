@@ -11,8 +11,9 @@ import org.springframework.stereotype.Component;
 @ComponentScan(basePackages="com.nearskysolutions.cloudbackup.admin,"+
 							"com.nearskysolutions.cloudbackup.common,"+
 							"com.nearskysolutions.cloudbackup.data,"+
-							"com.nearskysolutions.cloudbackup.services,"+
-							"com.nearskysolutions.cloudbackup.prod.beans")
+							"com.nearskysolutions.cloudbackup.util,"+
+							"com.nearskysolutions.cloudbackup.queue,"+
+							"com.nearskysolutions.cloudbackup.services")
 @ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.admin")
 @ImportResource("classpath:bean-admin-config.xml")
 @PropertySource({"classpath:persistence-${env}.properties",	

@@ -1,90 +1,49 @@
 package com.nearskysolutions.cloudbackup.common;
 
 import java.io.File;
+import java.util.UUID;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Transient;
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
-
-@Entity
-@Table(name="backup_file_data_packet")
-@XmlRootElement
-@XmlAccessorType(XmlAccessType.FIELD)
 public class BackupFileDataPacket {
 	
-	@Id
-	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	@Column(name="data_packet_id")
-	private Long dataPacketID;
-	
-	@Column(name="file_batch_id")
-	private Long fileBatchID;
-	
-	@Column(name="file_tracker_id")
-	private Long fileTrackerID;
-	
-	@Column(name="bytes_contained")
+	private UUID dataPacketID;
+	private UUID fileTrackerID;
 	private int bytesContained;
-	
-	@Column(name="packet_number")
 	private int packetNumber;
-	
-	@Column(name="packets_total")
 	private int packetsTotal;
-	
-	@Column(name="file_directory")
 	private String fileDirectory;
-	
-	@Column(name="file_name")
 	private String fileName;
+	private String packetData;
+	private File fileRef;
 	
 	public enum FileAction {
 		Create,
 		Update,
 		Delete,				
 	}
-	
-	@Column(name="file_action")
+
 	private FileAction fileAction;
-	
-	@Transient
-	private String fileData;
-	
-	@Transient
-	private File fileRef;
 	
 	protected BackupFileDataPacket() { }
 	
-	public BackupFileDataPacket(Long fileBatchID, Long fileTrackerID, int bytesContained, int packetNumber,
-								int packetsTotal, String fileDirectory, String fileName, FileAction fileAction) {
-				
-		this.fileBatchID = fileBatchID;
+	public BackupFileDataPacket(UUID fileTrackerID, int bytesContained, int packetNumber,
+								int packetsTotal, String fileDirectory, String fileName, 
+								String packetData, FileAction fileAction) {
+		
+		this.dataPacketID = UUID.randomUUID();
+		
+		this.dataPacketID = UUID.randomUUID();
 		this.fileTrackerID = fileTrackerID;
 		this.bytesContained = bytesContained;
 		this.packetNumber = packetNumber;		
 		this.packetsTotal = packetsTotal;
 		this.fileName = fileName;
 		this.fileDirectory = fileDirectory;		
+		this.packetData = packetData;
 		this.fileAction = fileAction;
 	}
 	
-	public Long getDataPacketID() {
+	public UUID getDataPacketID() {
 		return dataPacketID;
-	}
-
-	public Long getFileBatchID() {
-		return fileBatchID;
-	}
-	
-	public void setFileBatchID(Long fileBatchID) {
-		this.fileBatchID = fileBatchID;
 	}
 	
 	public int getPacketNumber() {
@@ -104,18 +63,18 @@ public class BackupFileDataPacket {
 	}
 
 	public String getFileData() {
-		return fileData;
+		return packetData;
 	}
 
 	public void setFileData(String fileData) {
-		this.fileData = fileData;
+		this.packetData = fileData;
 	}
 
-	public Long getFileTrackerID() {
+	public UUID getFileTrackerID() {
 		return fileTrackerID;
 	}
 
-	public void setFileTrackerID(Long trackerID) {
+	public void setFileTrackerID(UUID trackerID) {
 		this.fileTrackerID = trackerID;
 	}
 
@@ -169,7 +128,7 @@ public class BackupFileDataPacket {
 								"packetNumber=%d, packetsTotal=%d, fileDirectory=%s, fileName=%s, fileAction=%s "+
 								"fileData.length=%d]", 
 								dataPacketID, fileTrackerID, bytesContained, packetNumber, packetsTotal, 
-								fileDirectory, fileName, fileAction, (fileData == null ? 0 : fileData.length()));
+								fileDirectory, fileName, fileAction, (packetData == null ? 0 : packetData.length()));
 	}	
 	 
 }

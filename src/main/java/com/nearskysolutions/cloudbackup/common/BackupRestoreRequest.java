@@ -38,7 +38,7 @@ public class BackupRestoreRequest {
 	private String submitterId;
 	
 	@ElementCollection(fetch = FetchType.EAGER)
-	private List<Long> requestedFileTrackerIDs;
+	private List<UUID> requestedFileTrackerIDs;
 	
 	@Column(name="notify_type")
 	private NotifyType notifyType;
@@ -92,7 +92,7 @@ public class BackupRestoreRequest {
 	
 	public BackupRestoreRequest(UUID clientID,
 								String submitterId, 
-								List<Long> trackerIds, 
+								List<UUID> trackerIds, 
 								NotifyType notifyType, 
 								String notifyTarget, 
 								String notifyParameter,
@@ -219,11 +219,11 @@ public class BackupRestoreRequest {
 		this.restoreResultsURLs = restoreResultsURLs;
 	}
 	
-	public List<Long> getRequestedFileTrackerIDs() {
+	public List<UUID> getRequestedFileTrackerIDs() {
 		return requestedFileTrackerIDs;
 	}
 
-	public void setRequestedFileTrackerIDs(List<Long> requestedFileTrackerIDs) {
+	public void setRequestedFileTrackerIDs(List<UUID> requestedFileTrackerIDs) {
 		this.requestedFileTrackerIDs = requestedFileTrackerIDs;
 	}	
 }

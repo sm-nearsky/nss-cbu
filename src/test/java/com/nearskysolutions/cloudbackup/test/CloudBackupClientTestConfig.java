@@ -15,7 +15,8 @@ import org.springframework.stereotype.Component;
 @ComponentScan(basePackages={"com.nearskysolutions.cloudbackup.client",
 				 			"com.nearskysolutions.cloudbackup.services",
 				 			"com.nearskysolutions.cloudbackup.admin",
-				 			"com.nearskysolutions.cloudbackup.test.beans"})
+				 			"com.nearskysolutions.cloudbackup.util,"+
+				 			"com.nearskysolutions.cloudbackup.queue,"})
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
 @EntityScan("com.nearskysolutions.cloudbackup.common")
 public class CloudBackupClientTestConfig {

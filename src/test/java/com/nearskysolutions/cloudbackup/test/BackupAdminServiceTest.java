@@ -76,16 +76,16 @@ public class BackupAdminServiceTest {
     private BackupFileClient backupClient;
 	private BackupFileTracker clientFileTracker1 = null;
 	private BackupFileTracker clientFileTracker2 = null;
+	private BackupFileTracker clientFileTracker3 = null;
 	
     Logger logger = LoggerFactory.getLogger(BackupAdminServiceTest.class);
     
     @Before
-    public void initTests() {
+    public void initTests() throws Exception {
     	this.gson = createGsonParser();
     	
         DefaultMockMvcBuilder builder = MockMvcBuilders.webAppContextSetup(this.wac);
         this.mockMvc = builder.build();
-        
     }
     
     @Test
@@ -242,12 +242,85 @@ public class BackupAdminServiceTest {
     }
     
     @Test
+    public void testTrackerAdmin() throws Exception {
+
+    	try {
+    	
+    		initPreBuiltClient();
+    		
+	    	MvcResult results;
+	    	String clientID = this.backupClient.getClientID().toString();	    	
+	    	BackupFileTracker[] trackerArr;
+	    	
+	    	logger.info("Getting list of trackers for test client");
+	    	
+	    	results = mockMvc.perform(get(String.format("/backupFileTrackers/%s?page=0&size=10", 
+	    								clientID))
+	                .accept(MediaType.APPLICATION_JSON))
+	                .andExpect(status().isOk())                
+	                .andReturn();
+	    		    	    	
+	    	logger.info(String.format("Received result: %d", results.getResponse().getStatus()));
+	    	
+	    	trackerArr = this.gson.fromJson(results.getResponse().getContentAsString(), BackupFileTracker[].class);
+	    	
+	    	assertEquals(3, trackerArr.length);
+	    	
+	    	logger.info("Correct number of trackers found");
+	    	
+	    	compareFileTracker(this.clientFileTracker1, trackerArr[0]);
+	    	compareFileTracker(this.clientFileTracker2, trackerArr[1]);	    	
+	    	compareFileTracker(this.clientFileTracker3, trackerArr[2]);
+	    	
+	    	logger.info("Testing sub page for tracker query");
+	    	
+	    	results = mockMvc.perform(get(String.format("/backupFileTrackers/%s?page=1&size=2", 
+	    								clientID))
+									.accept(MediaType.APPLICATION_JSON))
+									.andExpect(status().isOk())                
+									.andReturn();
+	    	
+	    	logger.info(String.format("Received result: %d", results.getResponse().getStatus()));
+
+	    	trackerArr = this.gson.fromJson(results.getResponse().getContentAsString(), BackupFileTracker[].class);
+
+	    	assertEquals(1, trackerArr.length);
+
+	    	logger.info("Correct number of trackers found");
+	    	
+	    	assertEquals(this.clientFileTracker3.getBackupFileTrackerID(), trackerArr[0].getBackupFileTrackerID());
+	    	
+	    	
+	    	logger.info("Testing beyond last page for tracker query");
+	    	
+	    	results = mockMvc.perform(get(String.format("/backupFileTrackers/%s?page=100&size=2", 
+	    								clientID))
+									.accept(MediaType.APPLICATION_JSON))
+									.andExpect(status().isOk())                
+									.andReturn();
+	    	
+	    	logger.info(String.format("Received result: %d", results.getResponse().getStatus()));
+
+	    	trackerArr = this.gson.fromJson(results.getResponse().getContentAsString(), BackupFileTracker[].class);
+
+	    	assertEquals(0, trackerArr.length);
+
+	    	logger.info("Correct number of trackers found");
+
+    	} catch(Exception ex) {
+    		logger.error("Error: ", ex);
+    		
+    		fail(ex.getMessage());    		
+    	}
+    }
+    
+    @Test
     public void testRestoreAdmin() throws Exception {
 
     	try
     	{
-    		initRestoreTests();
-    	
+    		initPreBuiltClient();
+    		
 	    	MvcResult results;
 	    	BackupRestoreRequest[] requestArr;
 	    	BackupRestoreRequest restoreRequest1;
@@ -266,7 +339,7 @@ public class BackupAdminServiceTest {
 	    	
 	    	assertEquals(0, requestArr.length);
 	    	    	
-	    	ArrayList<Long> trackerIdList = new ArrayList<Long>();
+	    	ArrayList<UUID> trackerIdList = new ArrayList<UUID>();
 	    	trackerIdList.add(this.clientFileTracker1.getBackupFileTrackerID());
 	    	trackerIdList.add(this.clientFileTracker2.getBackupFileTrackerID());
 	    	
@@ -420,22 +493,75 @@ public class BackupAdminServiceTest {
 			for(int i = 0; i < testRequest.getRequestedFileTrackerIDs().size(); i++) {
 				assertEquals(testRequest.getRequestedFileTrackerIDs().get(i), compareRequest.getRequestedFileTrackerIDs().get(i));
 			}	
-		}
+		}		
+	}
+	
+	private void compareFileTracker(BackupFileTracker compareTracker, BackupFileTracker testTracker) {
 		
+		assertEquals(compareTracker.getClientID(), testTracker.getClientID());
+		assertEquals(compareTracker.getBackupFileTrackerID(), testTracker.getBackupFileTrackerID());
+		assertEquals(compareTracker.getBackupRepositoryLocation(), testTracker.getBackupRepositoryLocation());
+		assertEquals(compareTracker.getBackupRepositoryType(), testTracker.getBackupRepositoryType());
+		assertEquals(compareTracker.getBackupRepositoryKey(), testTracker.getBackupRepositoryKey());
+		assertEquals(compareTracker.getFileName(), testTracker.getFileName());
+		assertEquals(compareTracker.getSourceDirectory(), testTracker.getSourceDirectory());
+		assertEquals(compareTracker.getTrackerStatus(), testTracker.getTrackerStatus());
 		
+		assertEquals(compareTracker.getFileAttributes().getFileCreatedDateTimeMillis(),
+						testTracker.getFileAttributes().getFileCreatedDateTimeMillis());
 		
+		assertEquals(compareTracker.getFileAttributes().getFileAccessDateTimeMillis(),
+						testTracker.getFileAttributes().getFileAccessDateTimeMillis());
+		
+		assertEquals(compareTracker.getFileAttributes().getFileModifiedDateTimeMillis(),
+						testTracker.getFileAttributes().getFileModifiedDateTimeMillis());
+		
+		assertEquals(compareTracker.getFileAttributes().getFileSize(),
+						testTracker.getFileAttributes().getFileSize());
+		
+		assertEquals(compareTracker.getFileAttributes().getFileKey(),
+						testTracker.getFileAttributes().getFileKey());
+		
+		assertEquals(compareTracker.getFileAttributes().isArchive(),
+						testTracker.getFileAttributes().isArchive());
+		
+		assertEquals(compareTracker.getFileAttributes().isDirectory(),
+						testTracker.getFileAttributes().isDirectory());
+		
+		assertEquals(compareTracker.getFileAttributes().isReadOnly(),
+						testTracker.getFileAttributes().isReadOnly());
+		
+		assertEquals(compareTracker.getFileAttributes().isRegularFile(),
+						testTracker.getFileAttributes().isRegularFile());
+		
+		assertEquals(compareTracker.getFileAttributes().isHidden(),
+						testTracker.getFileAttributes().isHidden());
+		
+		assertEquals(compareTracker.getFileAttributes().isSymbolicLink(),
+						testTracker.getFileAttributes().isSymbolicLink());
+		
+		assertEquals(compareTracker.getFileAttributes().isOther(),
+						testTracker.getFileAttributes().isOther());
+		
+		assertEquals(compareTracker.getFileAttributes().isSystem(),
+						testTracker.getFileAttributes().isSystem());		
 	}
 
-	private void initRestoreTests() throws Exception {
+	private void initPreBuiltClient() throws Exception {
     	
+		//Only build once per test sequence
+		if(0 != backupClientSvc.getAllBackupClients().size()) {
+			return;
+		}
+		
         UUID randomID = UUID.randomUUID();
 		ArrayList<String> dirList = new ArrayList<String>();
 		
 		File tmpFile1 = File.createTempFile(String.format("file1_%s", randomID.toString()), "tmp");
 		File tmpFile2 = File.createTempFile(String.format("file2_%s", randomID.toString()), "tmp");
+		File tmpFile3 = new File(tmpFile2.getParent());
 		
-		dirList.add(tmpFile1.getAbsolutePath());
-		dirList.add(tmpFile1.getAbsolutePath());
+		dirList.add(tmpFile1.getParent());
 		
 		this.backupClient = this.backupClientSvc.addBackupClient(new BackupFileClient("Client " + randomID.toString(), 
 												 										 "desc " + randomID.toString(), 
@@ -456,11 +582,23 @@ public class BackupAdminServiceTest {
 																		   this.backupClient.getCurrentRepositoryKey(),
 																		   tmpFile2.getAbsolutePath()));
 		
-		this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Stored);
-		this.clientFileTracker2.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker3 = this.backupDataSvc.addBackupFileTracker(new BackupFileTracker(this.backupClient.getClientID(), 
+																		   this.backupClient.getCurrentRepositoryType(),
+																		   this.backupClient.getCurrentRepositoryLocation(),
+																		   this.backupClient.getCurrentRepositoryKey(),
+																		   tmpFile3.getAbsolutePath()));
+
 		
-		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
-		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker2);
+		this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker1.setLastStatusChange(new Date());
+		this.clientFileTracker2.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker2.setLastStatusChange(new Date());
+		this.clientFileTracker3.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker3.setLastStatusChange(new Date());
+		
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);		
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker2);		
+		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker3);
     }
 
 	public void cleanUpAfterRestoreTests() throws Exception {
@@ -485,6 +623,8 @@ public class BackupAdminServiceTest {
 			
 			throw ex;
 		}
+		
+		//NOTE: Don't delete tracker 3 because it's the temp dir!!
 		
 		try
 		{

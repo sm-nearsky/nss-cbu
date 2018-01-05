@@ -7,6 +7,8 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import com.google.gson.annotations.SerializedName;
+
 @Entity
 @Table(name="backup_file_attributes")
 public class BackupFileAttributes {
@@ -32,31 +34,31 @@ public class BackupFileAttributes {
 	private Long fileSize;
 	
 	@Column(name="is_regular_file")
-	private boolean isRegularFile;
+	private boolean regularFile;
 	
-	@Column(name="is_directory")
-	private boolean isDirectory;
-	
+	@Column(name="is_directory")	
+	private boolean directory;
+		
 	@Column(name="is_symbolic_link")
-	private boolean isSymbolicLink;
+	private boolean symbolicLink;
 		
 	@Column(name="is_other")
-	private boolean isOther;
+	private boolean other;
 	
 	@Column(name="file_key")
 	private String fileKey;
 	
 	@Column(name="is_read_only")
-	private boolean isReadOnly;
+	private boolean readOnly;
 	
 	@Column(name="is_hidden")
-	private boolean isHidden;
+	private boolean hidden;
 	
 	@Column(name="is_system")
-	private boolean isSystem;
+	private boolean system;
 	
 	@Column(name="is_archive")
-	private boolean isArchive;
+	private boolean archive;
 		
 	protected BackupFileAttributes() { }
 	
@@ -136,35 +138,35 @@ public class BackupFileAttributes {
 	}
 
 	public boolean isRegularFile() {
-		return isRegularFile;
+		return regularFile;
 	}
 
 	public void setIsRegularFile(boolean isRegularFile) {
-		this.isRegularFile = isRegularFile;
+		this.regularFile = isRegularFile;
 	}
 
 	public boolean isDirectory() {
-		return isDirectory;
+		return directory;
 	}
 
 	public void setIsDirectory(boolean isDirectory) {
-		this.isDirectory = isDirectory;
+		this.directory = isDirectory;
 	}
 
 	public boolean isSymbolicLink() {
-		return isSymbolicLink;
+		return symbolicLink;
 	}
 
 	public void setIsSymbolicLink(boolean isSymbolicLink) {
-		this.isSymbolicLink = isSymbolicLink;
+		this.symbolicLink = isSymbolicLink;
 	}
 
 	public boolean isOther() {
-		return isOther;
+		return other;
 	}
 
 	public void setIsOther(boolean isOther) {
-		this.isOther = isOther;
+		this.other = isOther;
 	}
 	
 	public String getFileKey() {
@@ -176,35 +178,35 @@ public class BackupFileAttributes {
 	}
 	
 	public boolean isReadOnly() {
-		return isReadOnly;
+		return readOnly;
 	}
 
 	public void setIsReadOnly(boolean isReadOnly) {
-		this.isReadOnly = isReadOnly;
+		this.readOnly = isReadOnly;
 	}
 
 	public boolean isHidden() {
-		return isHidden;
+		return hidden;
 	}
 
 	public void setIsHidden(boolean isHidden) {
-		this.isHidden = isHidden;
+		this.hidden = isHidden;
 	}
 
 	public boolean isSystem() {
-		return isSystem;
+		return system;
 	}
 
 	public void setIsSystem(boolean isSystem) {
-		this.isSystem = isSystem;
+		this.system = isSystem;
 	}
 
 	public boolean isArchive() {
-		return isArchive;
+		return archive;
 	}
 
 	public void setIsArchive(boolean isArchive) {
-		this.isArchive = isArchive;
+		this.archive = isArchive;
 	}
 
 	@Override
@@ -214,7 +216,7 @@ public class BackupFileAttributes {
 								"isDirectory=%s, isSymbolicLink=%s, isOther=%s, fileKey=%s, isReadOnly=%s, isHidden=%s, " +
 								"isSystem=%s, isArchive=%s]",
 								backupFileAttributesID, backupFileTrackerID, fileCreatedDateTimeMillis, fileModifiedDateTimeMillis,
-								fileAccessDateTimeMillis, fileSize, isRegularFile, isDirectory, isSymbolicLink, isOther, fileKey,
-								isReadOnly, isHidden, isSystem, isArchive);
+								fileAccessDateTimeMillis, fileSize, regularFile, directory, symbolicLink, other, fileKey,
+								readOnly, hidden, system, archive);
 	}	
 }

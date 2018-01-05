@@ -2,7 +2,6 @@ package com.nearskysolutions.cloudbackup.test;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -10,7 +9,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -19,7 +17,6 @@ import java.util.UUID;
 
 import javax.transaction.Transactional;
 
-import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,25 +24,18 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
-import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
-import com.nearskysolutions.cloudbackup.common.RestoreRequestHandlerQueue;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
-import com.nearskysolutions.cloudbackup.test.beans.PacketHandlerQueueTest;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = CloudBackupClientTestConfig.class)
@@ -62,10 +52,6 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 	
 	@Autowired
 	private BackupFileDataService backupDataSvc;
-
-	@Autowired
-	@Qualifier("RestoreRequestHandlerQueue")
-	private RestoreRequestHandlerQueue restoreRequestHandlerTest;
 	
 	private BackupFileClient backupClient;
 	private BackupFileTracker clientFileTracker1 = null;
@@ -102,7 +88,9 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 																		   tmpFile2.getAbsolutePath()));
 
 		this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker1.setLastStatusChange(new Date());
 		this.clientFileTracker2.setTrackerStatus(BackupFileTrackerStatus.Stored);
+		this.clientFileTracker2.setLastStatusChange(new Date());
 		
 		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
 		this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker2);
@@ -234,7 +222,7 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 
 	private BackupRestoreRequest createBackupRestoreRequest() throws Exception {
 		
-		ArrayList<Long> trackerList = new ArrayList<Long>();
+		ArrayList<UUID> trackerList = new ArrayList<UUID>();
 
 		trackerList.add(this.clientFileTracker1.getBackupFileTrackerID());
 		trackerList.add(this.clientFileTracker2.getBackupFileTrackerID());
@@ -305,9 +293,9 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			origRestoreRequest.setNotifyParameter("new notify parameter");
 			origRestoreRequest.setIncludeSubdirectories(!origRestoreRequest.isIncludeSubdirectories());
 			origRestoreRequest.getRequestedFileTrackerIDs().clear();;
-			origRestoreRequest.getRequestedFileTrackerIDs().add(1001L);
-			origRestoreRequest.getRequestedFileTrackerIDs().add(2001L);
-			origRestoreRequest.getRequestedFileTrackerIDs().add(3001L);
+			origRestoreRequest.getRequestedFileTrackerIDs().add(UUID.randomUUID());
+			origRestoreRequest.getRequestedFileTrackerIDs().add(UUID.randomUUID());
+			origRestoreRequest.getRequestedFileTrackerIDs().add(UUID.randomUUID());
 			
 			Calendar cal = Calendar.getInstance();
 			
@@ -374,6 +362,7 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			restoreRequest.setSubmitterId("test submitter");
 						
 			this.clientFileTracker1.setTrackerStatus(BackupFileTrackerStatus.Pending);
+			this.clientFileTracker1.setLastStatusChange(new Date());
 			
 			this.backupDataSvc.updateBackupFileTracker(this.clientFileTracker1);
 			
@@ -404,40 +393,6 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			fail(String.format("Error: %s", e.getMessage()));
 		}
 		
-	}
-
-
-	@Test
-	public void sendRequestToProcessingQueue() {
-						
-		try {
-			
-			BackupRestoreRequest restoreRequest1 = createBackupRestoreRequest();
-			BackupRestoreRequest restoreRequest2 = createBackupRestoreRequest();
-			
-			restoreRequest1 = this.restoreSvc.addRestoreRequest(restoreRequest1);
-			
-			assertTrue(this.restoreRequestHandlerTest.queueHasRequests());
-			
-			restoreRequest2 = this.restoreSvc.addRestoreRequest(restoreRequest2);
-
-			BackupRestoreRequest queuedRequest1 = this.restoreRequestHandlerTest.retreiveNextRestoreRequest();
-			BackupRestoreRequest queuedRequest2 = this.restoreRequestHandlerTest.retreiveNextRestoreRequest();
-			
-			assertFalse(this.restoreRequestHandlerTest.queueHasRequests());
-			
-			assertEquals(queuedRequest1.getRequestID(), restoreRequest1.getRequestID());
-			assertEquals(queuedRequest2.getRequestID(), restoreRequest2.getRequestID());
-			
-			assertNotNull(queuedRequest1.getSubmittedDateTime());
-			assertNotNull(queuedRequest2.getSubmittedDateTime());		
-					
-		} catch (Exception e) {
-			logger.error("Error: ", e);
-			e.printStackTrace();
-			
-			fail(String.format("Error: %s", e.getMessage()));
-		}			
 	}
 	
 

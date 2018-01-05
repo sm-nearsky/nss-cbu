@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.attribute.DosFileAttributes;
+import java.util.Date;
 import java.util.UUID;
 
 import javax.persistence.CascadeType;
@@ -17,14 +18,20 @@ import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import org.hibernate.annotations.GenericGenerator;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name="backup_file_data_tracker")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BackupFileTracker {
-	
+		
 	@Id
-	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	@Column(name="backup_file_tracker_id")
-	private Long backupFileTrackerID;
+	@GeneratedValue(generator = "uuid2")
+	@GenericGenerator(name = "uuid2", strategy = "uuid2")
+	@Column(name="backup_file_tracker_id", columnDefinition = "BINARY(16)")
+	private UUID backupFileTrackerID;
 	
 	@Column(name="client_id", columnDefinition = "BINARY(16)")
 	private UUID clientID;
@@ -41,6 +48,9 @@ public class BackupFileTracker {
 	@Column(name="file_name")
 	private String fileName;
 	
+	@Column(name="file_full_path")
+	private String fileFullPath;
+	
 	@Column(name="source_directory", nullable=true)
 	private String sourceDirectory;
 	
@@ -53,6 +63,15 @@ public class BackupFileTracker {
 	@OneToOne(cascade=CascadeType.ALL) 
 	private BackupFileAttributes fileAttributes;
 	
+	@Column(name="last_digest", nullable=true)
+	private String lastDigest;
+	
+	@Column(name="last_error", nullable=true)
+	private String lastError;
+		
+	@Column(name="last_status_change_datetime", nullable=true)
+	private Date lastStatusChange;
+	
 	@Transient
 	private boolean isFileChanged;
 	
@@ -61,8 +80,11 @@ public class BackupFileTracker {
 	
 	public enum BackupFileTrackerStatus {
 		Pending,
+		Processing,
 		Stored,
-		Deleted,
+		Deleted,		
+		Retry,
+		Error,
 		Unknown
 	}
 	
@@ -92,10 +114,16 @@ public class BackupFileTracker {
 		this.sourceDirectory = sourceFile.getParent();
 		
 		this.fileName = sourceFile.getName();		
-					
+		
 		this.trackerStatus = BackupFileTrackerStatus.Unknown;
 		
+		createFilePathName();
+		
 		updateFileAttributes(sourceFile);		
+	}
+
+	private void createFilePathName() { 
+		this.fileFullPath = this.getFileReference().getAbsolutePath();
 	}
 
 	public void updateFileAttributes(File sourceFile) throws IOException {
@@ -117,8 +145,12 @@ public class BackupFileTracker {
 														  attr.isArchive());
 	}
 
-	public Long getBackupFileTrackerID() {
+	public UUID getBackupFileTrackerID() {
 		return this.backupFileTrackerID;
+	}
+	
+	public void setBackupFileTrackerID(UUID backupFileTrackerID) {
+		this.backupFileTrackerID = backupFileTrackerID;
 	}
 	
 	public UUID getClientID() {
@@ -155,6 +187,8 @@ public class BackupFileTracker {
 
 	public void setFileName(String fileName) {
 		this.fileName = fileName;
+		
+		createFilePathName();
 	}
 
 	public String getSourceDirectory() {
@@ -166,6 +200,8 @@ public class BackupFileTracker {
 		checkDirectoryState(isDirectory(), sourceDirectory, getFileName());
 		
 		this.sourceDirectory = sourceDirectory;
+		
+		createFilePathName();
 	}
 
 	public boolean isFileDeleted() {
@@ -230,13 +266,37 @@ public class BackupFileTracker {
 		this.isFileNew = isFileNew;
 	}
 	
+	public String getLastDigest() {
+		return lastDigest;
+	}
+
+	public void setLastDigest(String lastDigest) {
+		this.lastDigest = lastDigest;
+	}
+
+	public String getLastError() {
+		return lastError;
+	}
+
+	public void setLastError(String lastError) {
+		this.lastError = lastError;
+	}
+
+	public Date getLastStatusChange() {
+		return lastStatusChange;
+	}
+
+	public void setLastStatusChange(Date lastStatusChange) {
+		this.lastStatusChange = lastStatusChange;
+	}
+	
 	@Override
 	public String toString() {
 		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
-								"backupRepositoryKey=%s, fileName=%s, sourceDirectory=%s, " +
-								"isFileDeleted=%s, fileAttributes=%s]",
+								"backupRepositoryKey=%s, fileName=%s, sourceDirectory=%s, trackerStatus=%s, lastError=%s, " +
+								"lastStatusChange=%s, isFileDeleted=%s, fileAttributes=%s]",
 								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
-								fileName, sourceDirectory, isFileDeleted, fileAttributes);
+								fileName, sourceDirectory, trackerStatus.toString(), lastError, lastStatusChange, isFileDeleted, fileAttributes);
 	}
 
 	public boolean equalsFile(File compareFile) throws IOException {
@@ -254,8 +314,7 @@ public class BackupFileTracker {
 			filesEqual = 
 					(attr.creationTime().toMillis() == this.getFileAttributes().getFileCreatedDateTimeMillis()) &&
 					(attr.lastModifiedTime().toMillis() == this.getFileAttributes().getFileModifiedDateTimeMillis()) &&
-					(attr.lastAccessTime().toMillis() == this.getFileAttributes().getFileAccessDateTimeMillis()) &&
-					attr.size() == this.getFileAttributes().getFileSize() &&
+					(attr.lastAccessTime().toMillis() == this.getFileAttributes().getFileAccessDateTimeMillis()) &&					
 					attr.size() == this.getFileAttributes().getFileSize() &&
 					attr.isRegularFile() == this.getFileAttributes().isRegularFile() &&
 					attr.isDirectory() == this.getFileAttributes().isDirectory() &&

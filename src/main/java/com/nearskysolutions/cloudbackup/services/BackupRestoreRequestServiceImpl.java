@@ -7,14 +7,11 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
-import com.nearskysolutions.cloudbackup.common.FilePacketHandlerQueue;
-import com.nearskysolutions.cloudbackup.common.RestoreRequestHandlerQueue;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
 import com.nearskysolutions.cloudbackup.data.BackupRestoreRequestRepository;
@@ -23,10 +20,6 @@ import com.nearskysolutions.cloudbackup.data.BackupRestoreRequestRepository;
 public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestService {
 	
 	Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceImpl.class);
-
-	@Autowired
-	@Qualifier("RestoreRequestHandlerQueue")
-	RestoreRequestHandlerQueue restoreRequestHandlerQueue;
 	
 	@Autowired
 	private BackupRestoreRequestRepository requestRepo;
@@ -51,7 +44,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 		
 		logger.info(String.format("Storing backup request for clientID: %s with notify type: %s", clientID, restoreRequest.getNotifyType()));
 		
-		for(Long trackerID : restoreRequest.getRequestedFileTrackerIDs()) {
+		for(UUID trackerID : restoreRequest.getRequestedFileTrackerIDs()) {
 			BackupFileTracker fileTracker = fileSvc.getTrackerByBackupFileTrackerID(trackerID);
 			
 			if( fileTracker == null ) {
@@ -66,7 +59,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 				throw new Exception(String.format("Invalid status for tracker ID: %s, Status must be Stored", trackerID));
 			}
 			
-			logger.info(String.format("Adding file tracker with ID: %d for backup request with clientID: %s", trackerID, clientID));
+			logger.info(String.format("Adding file tracker with ID: %s for backup request with clientID: %s", trackerID, clientID));
 		}
 		
 		restoreRequest.setCurrentStatus(RestoreStatus.Pending);
@@ -75,13 +68,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 		try {
 			logger.info("Saving restore request to repo");
 			
-			retVal = requestRepo.save(restoreRequest);
-			
-			logger.info(String.format("Adding restore request %s to request queue", retVal.getRequestID()));
-			
-			this.restoreRequestHandlerQueue.queueRequest(retVal);
-			
-			logger.info("Backup request data saved to repository and added to processing queue");
+			retVal = requestRepo.save(restoreRequest);			
 			
 		} catch(Exception ex) {
 			logger.error(String.format("Couldn't save or queue BackupRestoreRequest", restoreRequest.toString()), ex);			

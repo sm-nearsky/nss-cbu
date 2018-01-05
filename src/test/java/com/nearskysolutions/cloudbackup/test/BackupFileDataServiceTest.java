@@ -3,13 +3,11 @@ package com.nearskysolutions.cloudbackup.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,9 +22,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
@@ -43,111 +38,7 @@ public class BackupFileDataServiceTest {
 			
 	@Autowired	
 	private BackupFileClientService clientSvc;
-	
-	@Test
-	public void queryPacketByID() {
 		
-				
-		BackupFileDataPacket dataPacket = new BackupFileDataPacket(1L, 1L, 10, 1, 10, "/foo/bar", "file1.txt", FileAction.Create);
-		
-		try {
-			dataPacket = fileDataSvc.addBackupFileDataPacket(dataPacket);
-		
-			Long packetID = dataPacket.getDataPacketID();
-			
-			BackupFileDataPacket packet = fileDataSvc.getPacketByFileDataPacketID(packetID);
-			
-			assertNotNull(packet);
-			assertEquals(packetID, packet.getDataPacketID());
-			
-		} catch (Exception e) {
-		
-			logger.error("Error: ", e);
-			e.printStackTrace();
-			
-			fail(String.format("Error: %s", e.getMessage()));
-		}
-	
-		
-	}
-	
-	@Test
-	public void queryBatchByID() {
-						
-		UUID clientID = UUID.randomUUID();
-	
-		BackupFileDataBatch dataBatch = new BackupFileDataBatch(clientID);
-		
-		try {
-			dataBatch = fileDataSvc.addBackupFileDataBatch(dataBatch);
-		
-			Long batchID = dataBatch.getFileBatchID();
-			
-			dataBatch = fileDataSvc.getDataBatchByBatchID(batchID);
-			
-			assertNotNull(dataBatch);
-			assertEquals(batchID, dataBatch.getFileBatchID());								
-							
-			
-		} catch (Exception e) {
-		
-			logger.error("Error: ", e);
-			e.printStackTrace();
-			
-			fail(String.format("Error: %s", e.getMessage()));
-		}
-		
-	}
-	
-	@Test
-	public void queryBatchByDate() {
-		
-		UUID clientID = UUID.randomUUID();
-				
-		BackupFileDataBatch dataBatch1 = new BackupFileDataBatch(clientID);
-		BackupFileDataBatch dataBatch2 = new BackupFileDataBatch(clientID);
-		BackupFileDataBatch dataBatch3 = new BackupFileDataBatch(clientID);
-		
-				
-		try {
-			dataBatch1 = fileDataSvc.addBackupFileDataBatch(dataBatch1);
-						
-			Thread.sleep(1000);
-			
-			dataBatch2 = fileDataSvc.addBackupFileDataBatch(dataBatch2);
-						
-			List<BackupFileDataBatch> batchList1 = fileDataSvc.getBatchesCreatedAfter(dataBatch1.getDateTimeCaptured());
-						
-			assertNotNull(batchList1);
-			assertEquals(1, batchList1.size());
-			
-			assertTrue(batchList1.get(0).getDateTimeCaptured().compareTo(dataBatch1.getDateTimeCaptured()) > 0);
-								  
-	        for (BackupFileDataBatch batch : batchList1) {
-				assertTrue(batch.getDateTimeCaptured().compareTo(dataBatch1.getDateTimeCaptured()) > 0);
-			}
-	        	                
-	        dataBatch3.setDateTimeConfirmed(new Date());	        
-	        dataBatch3 = fileDataSvc.addBackupFileDataBatch(dataBatch3);
-	        
-	        List<BackupFileDataBatch> batchList2 = fileDataSvc.getBatchesPendingConfirm();
-			
-			assertNotNull(batchList2);
-			assertEquals(2, batchList2.size());
-											  
-	        for (BackupFileDataBatch batch : batchList2) {
-	        	assertNull(batch.getDateTimeConfirmed());
-			}
-		} catch (Exception e) {
-		
-			logger.error("Error: ", e);
-			e.printStackTrace();
-			
-			fail(String.format("Error: %s", e.getMessage()));
-		}
-		
-	}	
-	
 	@Test
 	public void queryBackupFileTrackers() throws Exception {
 		
@@ -219,7 +110,146 @@ public class BackupFileDataServiceTest {
 			fail(String.format("Error: %s", e.getMessage()));
 		} finally {
 			file1.delete();
+			file2.delete();
+			file3.delete();
+		}
+	}
+	
+	@Test
+	public void queryBackupFileTrackersWithPaging() throws Exception {
+		
+		UUID clientID = UUID.randomUUID();
+				
+		File file1 = File.createTempFile(String.format("a1%s", UUID.randomUUID().toString()),"tmp");		
+		File file2 = File.createTempFile(String.format("b2%s", UUID.randomUUID().toString()),"tmp");
+		File file3 = File.createTempFile(String.format("c3%s", UUID.randomUUID().toString()),"tmp");
+		
+		List<BackupFileTracker> backupTrackers;
+		
+		try {
+			
+			BackupFileTracker bft1 = new BackupFileTracker(clientID, 
+															"Repository Type 1", 
+															"Repository Location 1", 
+															"Repository Key 1", 
+															file1.getAbsolutePath());
+			
+			
+			BackupFileTracker bft2 = new BackupFileTracker(clientID, 
+															"Repository Type 1", 
+															"Repository Location 1", 
+															"Repository Key 1", 
+															file2.getAbsolutePath());
+	
+						
+			BackupFileTracker bft3 = new BackupFileTracker(clientID, 
+															"Repository Type 1", 
+															"Repository Location 1", 
+															"Repository Key 1", 
+															file3.getAbsolutePath());
+			
+			bft1 = fileDataSvc.addBackupFileTracker(bft1);
+			bft2 = fileDataSvc.addBackupFileTracker(bft2);
+			bft3 = fileDataSvc.addBackupFileTracker(bft3);
+					
+			backupTrackers = fileDataSvc.getAllBackupTrackersForClientByPage(clientID, 0, 10);
+			
+			assertNotNull(backupTrackers);
+			assertEquals(3, backupTrackers.size());
+			
+			assertEquals(bft1.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
+			assertEquals(bft2.getBackupFileTrackerID(), backupTrackers.get(1).getBackupFileTrackerID());
+			assertEquals(bft3.getBackupFileTrackerID(), backupTrackers.get(2).getBackupFileTrackerID());
+			
+			backupTrackers = fileDataSvc.getAllBackupTrackersForClientByPage(clientID, 0, 2);
+			
+			assertNotNull(backupTrackers);
+			assertEquals(2, backupTrackers.size());
+			
+			assertEquals(bft1.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
+			assertEquals(bft2.getBackupFileTrackerID(), backupTrackers.get(1).getBackupFileTrackerID());
+			
+			backupTrackers = fileDataSvc.getAllBackupTrackersForClientByPage(clientID, 1, 2);
+			
+			assertNotNull(backupTrackers);
+			assertEquals(1, backupTrackers.size());
+			
+			assertEquals(bft3.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
+
+			backupTrackers = fileDataSvc.getAllBackupTrackersForClientByPage(clientID, 100, 2);
+			
+			assertNotNull(backupTrackers);
+			assertEquals(0, backupTrackers.size());
+			
+		} catch (Exception e) {		
+			logger.error("Error: ", e);
+			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
+		} finally {
+			file1.delete();
 			file2.delete();			
+			file3.delete();
+		}
+	}
+	
+	@Test
+	public void queryForMatchingTracker() throws Exception {
+		
+		UUID clientID = UUID.randomUUID();
+		String fileName1 = UUID.randomUUID().toString();
+		String fileName2 = UUID.randomUUID().toString();
+				
+		File file1 = File.createTempFile(fileName1, null);		
+		File file2 = File.createTempFile(fileName2, null);
+		File file3 = File.createTempFile(fileName2, null);
+		
+		
+		try {
+			
+			BackupFileTracker bft1 = new BackupFileTracker(clientID, 
+															"Repository Type 1", 
+															"Repository Location 1", 
+															"Repository Key 1", 
+															file1.getAbsolutePath());
+						
+			BackupFileTracker bft2 = new BackupFileTracker(clientID, 
+															"Repository Type 2", 
+															"Repository Location 2", 
+															"Repository Key 2", 
+															file2.getAbsolutePath());
+				
+			BackupFileTracker bft3 = new BackupFileTracker(clientID, 
+															"Repository Type 3", 
+															"Repository Location 3", 
+															"Repository Key 3", 
+															file3.getAbsolutePath());
+			
+			bft1 = fileDataSvc.addBackupFileTracker(bft1);
+			bft2 = fileDataSvc.addBackupFileTracker(bft2);
+			bft3 = fileDataSvc.addBackupFileTracker(bft3);
+					
+			List<BackupFileTracker> backupTrackers = fileDataSvc.findMatchingTrackers(clientID, 
+																						bft2.getBackupRepositoryType(), 
+																						bft2.getBackupRepositoryLocation(), 
+																						bft2.getBackupRepositoryKey(), 
+																						bft2.getSourceDirectory(), 
+																						bft2.getFileName());
+			
+			assertNotNull(backupTrackers);
+			assertEquals(1, backupTrackers.size());
+			
+			assertEquals(bft2.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
+			
+		} catch (Exception e) {		
+			logger.error("Error: ", e);
+			e.printStackTrace();
+			
+			fail(String.format("Error: %s", e.getMessage()));
+		} finally {
+			file1.delete();
+			file2.delete();
+			file3.delete();
 		}
 	}
 	

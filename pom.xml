@@ -4,7 +4,7 @@
 
   <groupId>com.nearskysolutions.cloudbackup</groupId>
   <artifactId>NssCloudBackupClient</artifactId>
-  <version>0.9</version>
+  <version>0.9.1</version>
   <packaging>jar</packaging>
 
   <name>NssCloudBackupClient</name>
@@ -19,7 +19,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 	    <artifactId>spring-boot-starter-parent</artifactId>
-	    <version>1.5.6.RELEASE</version>	    
+	    <version>1.5.9.RELEASE</version>	    
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	
@@ -38,6 +38,14 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-data-jpa</artifactId>
 	</dependency>
+	<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-activemq</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.activemq</groupId>
+        <artifactId>activemq-broker</artifactId>
+    </dependency>
 	<dependency>
 	    <groupId>org.springframework</groupId>
 	    <artifactId>spring-test</artifactId>
@@ -108,7 +116,7 @@
 	<dependency>
 		<groupId>com.google.code.gson</groupId>
 		<artifactId>gson</artifactId>
-	</dependency>
+	</dependency>	
 	<!-- https://mvnrepository.com/artifact/javax.xml.bind/jaxb-api -->
 	<dependency>
 	    <groupId>javax.xml.bind</groupId>

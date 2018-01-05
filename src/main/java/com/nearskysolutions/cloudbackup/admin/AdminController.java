@@ -1,12 +1,12 @@
 package com.nearskysolutions.cloudbackup.admin;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.HttpStatus;
@@ -15,16 +15,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
-import com.nearskysolutions.cloudbackup.common.BackupFileDataBatch;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
+import com.nearskysolutions.cloudbackup.queue.ClientUpdateHandlerQueue;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
-import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
-import com.nearskysolutions.cloudbackup.services.FileHandlerService;;
+import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;;
 
 @RestController
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
@@ -39,9 +39,10 @@ public class AdminController {
 	
 	@Autowired 
 	private BackupFileDataService backupDataSvc;
-	
-	@Autowired 
-	private FileHandlerService fileSvc;
+			
+	@Autowired
+	@Qualifier("ClientUpdateHandlerQueue")
+	ClientUpdateHandlerQueue clientUpdateHandlerQueue;
 	
 	Logger logger = LoggerFactory.getLogger(AdminController.class);
 	
@@ -173,6 +174,44 @@ public class AdminController {
 		return retVal;
     }
 	
+	@RequestMapping(value="/backupFileTrackers/{clientID}", params = { "page", "size" }, method=RequestMethod.GET)
+    public ResponseEntity<List<BackupFileTracker>> getBackupTrackersClientByID(@PathVariable UUID clientID, 
+																	    		@RequestParam( "page" ) int pageID, 
+																	    		@RequestParam( "size" ) int pageSize) {
+		
+		logger.trace(String.format("In AdminController.getBackupTrackersClientByID(UUID clientID) : %s", clientID));
+		
+		logger.info(String.format("Admin controller called to retrieve file trackers by clientID: %s", clientID));		
+		ResponseEntity<List<BackupFileTracker>> retVal = null;
+		
+		try
+		{			
+			HttpStatus httpStatus;
+			BackupFileClient client = clientSvc.getBackupClientByClientID(clientID);
+			
+			if( null == client ) {
+				httpStatus = HttpStatus.NOT_FOUND;
+				
+				logger.info(String.format("Backup client not found for clientID: %s", clientID));
+			} else {
+				httpStatus = HttpStatus.OK;
+				
+				logger.info(String.format("Backup client found for clientID: %s", clientID));
+			}			
+	        
+	        retVal = new ResponseEntity<List<BackupFileTracker>>(backupDataSvc.getAllBackupTrackersForClientByPage(clientID, pageID, pageSize), httpStatus);
+		
+		} catch(Exception ex) {
+			logger.error("Error in AdminController.getClientByID", ex);
+			
+			retVal = new ResponseEntity<List<BackupFileTracker>>((List<BackupFileTracker>)null, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		logger.trace(String.format("Completed AdminController.getBackupTrackersClientByID(UUID clientID) : %s = %d trackers", clientID, retVal.getBody().size()));
+		
+		return retVal;
+    }
+	
 	@RequestMapping(value="/restoreRequests", method=RequestMethod.PUT)
     public ResponseEntity<BackupRestoreRequest> insertBackupRestoreRequest(@RequestBody BackupRestoreRequest restoreRequest) {
 		
@@ -189,7 +228,10 @@ public class AdminController {
 			} else {
 				logger.info("Admin controller called to add backup restore request");
 				
-				restoreSvc.addRestoreRequest(restoreRequest);				
+				BackupRestoreRequest updatedRequest = restoreSvc.addRestoreRequest(restoreRequest);	
+				
+				this.clientUpdateHandlerQueue.sendBackupRestoreRequest(updatedRequest);
+				
 				httpStatus = HttpStatus.CREATED;				
 			}
 			
@@ -308,15 +350,16 @@ public class AdminController {
 		ResponseEntity<Void> retVal;
 		
 		try {
-									
-			List<BackupFileTracker> backupTrackers = backupDataSvc.getAllBackupTrackersForClient(clientID);
-			BackupFileDataBatch fileBatch = this.backupDataSvc.addBackupFileDataBatch(new BackupFileDataBatch(clientID));
-			
-			for(BackupFileTracker tracker : backupTrackers) {								
-				this.fileSvc.createPacketsForFile(fileBatch, tracker);
-			}	
-			
-			this.fileSvc.sendBatchToProcessingQueue(fileBatch);
+			//TODO Remove or fix						
+//			List<BackupFileTracker> backupTrackers = backupDataSvc.getAllBackupTrackersForClient(clientID);
+//			BackupFileDataBatch fileBatch = this.backupDataSvc.addBackupFileDataBatch(new BackupFileDataBatch(clientID));
+//			
+//			
+//			for(BackupFileTracker tracker : backupTrackers) {								
+//				this.fileSvc.createPacketsForFile(fileBatch, tracker);
+//			}	
+//			
+//			this.fileSvc.sendBatchToProcessingQueue(fileBatch);
 			
 			retVal = new ResponseEntity<Void>((Void)null, HttpStatus.OK);
 		
