@@ -1,13 +1,11 @@
 package com.nearskysolutions.cloudbackup.util;
 
-import com.nearskysolutions.cloudbackup.admin.AdminServicesServer;
 import com.nearskysolutions.cloudbackup.client.CloudBackupClient;
 import com.nearskysolutions.cloudbackup.server.CloudBackupServer;
 
 public class CloudBackupStartup {
 
-	private enum RunType {
-		Admin,
+	private enum RunType {		
 		Server,
 		Client,
 		None
@@ -22,9 +20,7 @@ public class CloudBackupStartup {
 			
 			if( null != mode ) {
 							
-				if( mode.equalsIgnoreCase("admin") ) {
-					rt = RunType.Admin;
-				} else if( mode.equalsIgnoreCase("server") ) {
+				if( mode.equalsIgnoreCase("server") ) {
 					rt = RunType.Server;
 				} else if( mode.equalsIgnoreCase("client") ) {
 					rt = RunType.Client;
@@ -32,10 +28,6 @@ public class CloudBackupStartup {
 			}		
 			
 			switch(rt) {
-				case Admin:
-					AdminServicesServer.main(args);			
-					break;
-					
 				case Server:
 					CloudBackupServer.main(args);
 					break;

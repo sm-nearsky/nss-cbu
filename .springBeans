@@ -9,7 +9,6 @@
 	<configs>
 	</configs>
 	<autoconfigs>
-		<config>java:com.nearskysolutions.cloudbackup.admin.AdminServicesServer</config>
 		<config>java:com.nearskysolutions.cloudbackup.server.CloudBackupServer</config>
 		<config>java:com.nearskysolutions.cloudbackup.client.CloudBackupClient</config>
 	</autoconfigs>

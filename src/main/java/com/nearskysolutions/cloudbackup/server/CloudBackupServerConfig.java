@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 							"com.nearskysolutions.cloudbackup.data,"+
 							"com.nearskysolutions.cloudbackup.util,"+
 							"com.nearskysolutions.cloudbackup.queue,"+
+							"com.nearskysolutions.cloudbackup.admin,"+
 							"com.nearskysolutions.cloudbackup.services,")
 @ConfigurationProperties(prefix = "com.nearskysolutions.cloudbackup.server")
 @ImportResource("classpath:bean-server-config.xml")

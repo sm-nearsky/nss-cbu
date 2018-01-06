@@ -10,14 +10,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,7 +46,6 @@ import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrack
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.NotifyType;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest.RestoreStatus;
-import com.nearskysolutions.cloudbackup.data.BackupFileClientRepository;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 
@@ -268,9 +265,10 @@ public class BackupAdminServiceTest {
 	    	
 	    	logger.info("Correct number of trackers found");
 	    	
-	    	compareFileTracker(this.clientFileTracker1, trackerArr[0]);
-	    	compareFileTracker(this.clientFileTracker2, trackerArr[1]);	    	
-	    	compareFileTracker(this.clientFileTracker3, trackerArr[2]);
+	    	//Tracker representing directory will be sorted first
+	    	compareFileTracker(this.clientFileTracker3, trackerArr[0]);
+	    	compareFileTracker(this.clientFileTracker1, trackerArr[1]);	    	
+	    	compareFileTracker(this.clientFileTracker2, trackerArr[2]);
 	    	
 	    	logger.info("Testing sub page for tracker query");
 	    	
@@ -288,7 +286,7 @@ public class BackupAdminServiceTest {
 
 	    	logger.info("Correct number of trackers found");
 	    	
-	    	assertEquals(this.clientFileTracker3.getBackupFileTrackerID(), trackerArr[0].getBackupFileTrackerID());
+	    	assertEquals(this.clientFileTracker2.getBackupFileTrackerID(), trackerArr[0].getBackupFileTrackerID());
 	    	
 	    	
 	    	logger.info("Testing beyond last page for tracker query");

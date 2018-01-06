@@ -38,18 +38,12 @@ public class CloudBackupServer  implements CommandLineRunner {
 	
 	@Autowired 
 	private BackupFileDataService fileDataSvc;
-	
-	@Autowired
-	private BackupRestoreRequestService restoreRequestSvc;
 		
 	public void run(String... args) {
 		
 		try {
 									
-			logger.info("Starting CloudBackupServer...");
-			
-			//Force exit to stop HTTP server
-			//System.exit(0);
+			logger.info("Starting CloudBackupServer...");			
 			
 		} catch (Exception ex) {
 			logger.error("Server run failed", ex);

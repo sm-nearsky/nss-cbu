@@ -11,9 +11,6 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -21,8 +18,6 @@ import org.hibernate.annotations.GenericGenerator;
 
 @Entity
 @Table(name="backup_restore_request")
-@XmlRootElement
-@XmlAccessorType(XmlAccessType.FIELD)
 public class BackupRestoreRequest {
 	
 	@Id
