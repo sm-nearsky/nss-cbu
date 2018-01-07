@@ -35,6 +35,7 @@
     },
     {
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.client.file-packet-size",
       "type": "java.lang.Integer"
     },
@@ -55,6 +56,7 @@
     },
     {
       "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.server.file-packet-size",
       "type": "java.lang.Integer"
     },

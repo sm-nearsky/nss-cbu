@@ -19,6 +19,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.catalina.TrackedWebResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -130,29 +131,37 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				logger.info(String.format(" Processing update for tracker: %s representing file: %s%s%s for client: %s, marking as stored", 
 											trackerID.toString(), tracker.getSourceDirectory(), File.separator, tracker.getFileName(), clientID.toString()));
 								
-				if(fileDir.exists())  {
+				if( 1 != packet.getPacketNumber() ) {
+				
+					if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus() ) {						
+						throw new Exception(String.format("Invalid state for packet number out of order and can't process for packetID: %s, tracker ID: %s", 
+															packetID.toString(), trackerID.toString()));						
+					} else	if(false == tmpFile.exists() ) {						
+						retryTracker = true;
 					
-					if(1 == packet.getPacketNumber()) {
+						throw new Exception(String.format("Packet number out of order and can't process for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));
+					}
+					
+				} else {				
+				
+					tracker.setTrackerStatus(BackupFileTrackerStatus.Processing);
+				
+					if(fileDir.exists())  {					
+					
 						logger.info(String.format("Starting new stored file for tracker ID: %s, client ID: %s", trackerID.toString(), clientID.toString()));
 						
 						//Replace final file if it exists and this is the first new packet
 						if(finalZipFile.exists()) {
 							finalZipFile.delete();
 						}
-					}
-				
-				} else if(false == fileDir.exists()) {
-					
-					logger.info(String.format("Createing file directory %s for tracker ID: %s", fileDir.getAbsolutePath(), clientID.toString()));
-					
-					//Ceate tracker dir with all parents when needed			
-					fileDir.mkdirs();
-				}					
-
-				if( 1 < packet.getPacketNumber() && false == tmpFile.exists() ) {
-					retryTracker = true;
-					
-					throw new Exception(String.format("Packet number out of order and can't process for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));					
+						
+					} else {
+						
+						logger.info(String.format("Createing file directory %s for tracker ID: %s", fileDir.getAbsolutePath(), clientID.toString()));
+						
+						//Ceate tracker dir with all parents when needed			
+						fileDir.mkdirs();
+					}					
 				}
 				
 				logger.info(String.format("Writing packet data for packet %s, packet number: %d of %d", 
@@ -167,8 +176,6 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				if( packet.getPacketsTotal() != packet.getPacketNumber() ) {	
 					logger.info(String.format("Completed write, leaving temp file for packet %s, last packet number: %d of %d", 
 							packetID.toString(), packet.getPacketNumber(), packet.getPacketsTotal()));
-					
-					tracker.setTrackerStatus(BackupFileTrackerStatus.Processing);						
 				} else {
 								
 					logger.info(String.format("Completed write for last packet of tracker: %s, comparing checksum digest", trackerID.toString())); 
@@ -191,21 +198,19 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					byte[] md5Complete = messageDigest.digest();
 					String md5Encoded = Base64.getEncoder().encodeToString(md5Complete);
 
-					if( false == md5Encoded.equals(tracker.getLastDigest()) ) {
-						
+					if( false == md5Encoded.equals(tracker.getLastDigest()) ) {						
 						logger.info(String.format("Checksum mis-match for tracker: %s, marking tracker for retry", trackerID.toString()));
 						
 						retryTracker = true;
 						
 						throw new Exception("Unable to file due to checksum error");
-					} else {
-						
+					} else {						
 						logger.info(String.format("Checksum match for tracker: %s, creating final storage file", trackerID.toString()));
 						
 						FileZipUtils.CreateZipFileOutput(tmpFile, finalZipFile);
 						tracker.setTrackerStatus(BackupFileTrackerStatus.Stored);
 					}						
-				}						
+				}					
 				
 			}				
 						
