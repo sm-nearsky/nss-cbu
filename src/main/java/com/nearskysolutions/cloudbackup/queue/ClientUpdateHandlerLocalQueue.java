@@ -1,7 +1,6 @@
 package com.nearskysolutions.cloudbackup.queue;
 
 import java.util.Date;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,17 +62,7 @@ public class ClientUpdateHandlerLocalQueue implements ClientUpdateHandlerQueue {
 			throw new Exception("fileTracker can't be null");
 		}
 		
-		ClientUpdateMessage updateMessage = new ClientUpdateMessage(new Date(), 
-																	ClientUpdateMessageType.FileTracker, 
-																	ClientUpdateMessageFormat.JSON, 
-																	JsonConverter.ConvertObjectToJson(fileTracker)); 
-		
-	
-		
-		logger.info(String.format("Sending file tracker client update message with message ID: %s", 
-									updateMessage.getMessageID().toString()));
-		
-		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), updateMessage);
+		sendJmsMessageToQueue(ClientUpdateMessageType.FileTracker, fileTracker);
 		
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 	}
@@ -87,18 +76,8 @@ public class ClientUpdateHandlerLocalQueue implements ClientUpdateHandlerQueue {
 			throw new Exception("filePacket can't be null");
 		}
 		
-		ClientUpdateMessage updateMessage = new ClientUpdateMessage(new Date(), 
-																	ClientUpdateMessageType.FilePacket, 
-																	ClientUpdateMessageFormat.JSON, 
-																	JsonConverter.ConvertObjectToJson(filePacket)); 
-		
-	
-		
-		logger.info(String.format("Sending file packet client update message with message ID: %s", 
-									updateMessage.getMessageID().toString()));
-		
-		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), updateMessage);
-		
+		sendJmsMessageToQueue(ClientUpdateMessageType.FilePacket, filePacket);
+			
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 		
 	}
@@ -111,20 +90,24 @@ public class ClientUpdateHandlerLocalQueue implements ClientUpdateHandlerQueue {
 			throw new Exception("restoreRequest can't be null");
 		}
 		
-		ClientUpdateMessage updateMessage = new ClientUpdateMessage(new Date(), 
-																	ClientUpdateMessageType.FileRestore, 
-																	ClientUpdateMessageFormat.JSON, 
-																	JsonConverter.ConvertObjectToJson(restoreRequest)); 
-		
-	
-		
-		logger.info(String.format("Sending restore request client update message with message ID: %s", 
-									updateMessage.getMessageID().toString()));
-		
-		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), updateMessage);
-		
+		sendJmsMessageToQueue(ClientUpdateMessageType.FileRestore, restoreRequest);
+				
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendBackupRestoreRequest(BackupRestoreRequest restoreRequest)");
 		
 	}
 
+	private void sendJmsMessageToQueue(ClientUpdateMessageType messageType, Object messageObj) throws Exception {
+	
+		ClientUpdateMessage updateMessage = new ClientUpdateMessage(new Date(), 
+																	messageType, 
+																	ClientUpdateMessageFormat.JSON, 
+																	JsonConverter.ConvertObjectToJson(messageObj)); 
+			
+		
+		logger.info(String.format("Sending file tracker client update message with message ID: %s", 
+									updateMessage.getMessageID().toString()));
+		
+		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), updateMessage, true);	
+		
+	}
 }

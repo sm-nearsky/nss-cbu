@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jms.UncategorizedJmsException;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
@@ -33,7 +34,7 @@ public class JmsHandler {
 	}
 	
 	
-	public void sendJsonJmsMessage(String destination, Object obj) throws Exception {		
+	public void sendJsonJmsMessage(String destination, Object obj, boolean bUseRetry) throws Exception {		
 		if( null == destination ) {
 			throw new Exception("destination argument can't be null");
 		}
@@ -41,12 +42,33 @@ public class JmsHandler {
 		if( null == obj ) {
 			throw new Exception("obj argument can't be null");
 		}
-		
+				
 		String message = JsonConverter.ConvertObjectToJson(obj);
-		
+		int numRetries = (bUseRetry ? 3 : 0);
+				
 		logger.info(String.format("Sending object of type %s to destination=%s", obj.getClass().getName(), destination));
 		
-		this.jmsTemplate.convertAndSend(destination, message);		
+		do
+		{
+			try {
+				
+				this.jmsTemplate.convertAndSend(destination, message);
+				
+				numRetries = 0;
+				
+			} catch (UncategorizedJmsException jmsEx) {
+				if( -1 != jmsEx.getMessage().indexOf("Address already in use") ) {
+					//Back off to so reconnect can be attemted
+					logger.info(String.format("Connection failed while trying to send message of type %s to destination=%s, backing off for retry", 
+												obj.getClass().getName(), destination));
+					
+					Thread.sleep(500);
+				} else {
+					//Can't recover, throw the exception
+					throw jmsEx;
+				}
+			}
+		} while(--numRetries >= 0);
 	}
 	
 	@Bean

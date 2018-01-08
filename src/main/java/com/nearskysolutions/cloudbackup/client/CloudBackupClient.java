@@ -80,7 +80,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				throw new Exception("No client ID found in backup configuration properties");
 			}
 			
-			logger.info("Using clientId: %s", clientId);
+			logger.info(String.format("Using clientId: %s", clientId));
 						
 			//Use values in client admin service as base when not in test mode
 			if( false == cbcConfig.isClientTestMode() ) {
@@ -99,39 +99,85 @@ public class CloudBackupClient  implements CommandLineRunner {
 			String repoLoc = (cbcConfig.getRepoLoc() != null) ? cbcConfig.getRepoLoc() : backupClient.getCurrentRepositoryLocation();
 			String repoKey = (cbcConfig.getRepoKey() != null) ? cbcConfig.getRepoKey() : backupClient.getCurrentRepositoryKey();
 			
+			logger.info(String.format("Scanning directory includes for clientId: %s", clientId));
+			
 			if( null == clientDirectoryIncludes || 0 == clientDirectoryIncludes.size() ) {
 							
-				logger.info("No directory includes found for client with UUID: %s", clientId);
+				logger.info(String.format("No directory includes found for client with UUID: %s", clientId));
 				
 			} else {
 				
-				logger.info("Client with UUID %s configured with %d directory includes",
-								clientId, 
-								clientDirectoryIncludes.size());
+				logger.info(String.format("Client with UUID %s configured with %d directory includes",
+											clientId, 
+											clientDirectoryIncludes.size()));
 				
-				Dictionary<String, BackupFileTracker> trackerFileMap = new Hashtable<String, BackupFileTracker>();
+				List<String> trackerFilePathList = new ArrayList<String>();
 				
+				BackupFileTracker[] trackerArr;
+				BackupFileTracker tracker;
 				boolean isMoreTrackers = true;
 				int trackerListCurrentPage = 0;
-				int trackerListPageSize = 100;
+				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();
 				
 				//Collect all trackers from service
 				while(isMoreTrackers) {
 
 					if( cbcConfig.isClientTestMode() ) {
+						logger.info("Test mode active, all files being treated as new trackers");
+						
 						isMoreTrackers = false;
-					
-						//Files always treated as new in testing mode
 					} else {			    
-						BackupFileTracker[] trackerArr = this.restTemplate.getForObject(String.format("%s/%s?page=%d&size=%d",
-																						cbcConfig.getBackupTrackerAdminSvcUrl(), clientId, trackerListCurrentPage, trackerListPageSize), 
-																						BackupFileTracker[].class);			
+						
+						logger.info(String.format("Calling backup admin service to scan current trackers for client: %s, current page: %d, page size: %d",
+													clientId.toString(), trackerListCurrentPage, trackerListPageSize));
+						
+						trackerArr = this.restTemplate.getForObject(String.format("%s/%s?page=%d&size=%d",
+																					cbcConfig.getBackupTrackerAdminSvcUrl(), clientId, trackerListCurrentPage, trackerListPageSize), 
+																					BackupFileTracker[].class);			
 					
 						if( null == trackerArr || 0 == trackerArr.length ) {
+							logger.info("No trackers returned, scan completed");
+							
 							isMoreTrackers = false;
-						} else {
+						} else {					
+							logger.info(String.format("%d trackers returned for scan page", trackerArr.length));
+							
 							for(int i = 0; i < trackerArr.length; i++) {
-								trackerFileMap.put(trackerArr[i].getFileReference().getAbsolutePath().toLowerCase(), trackerArr[i]);
+								
+								tracker = trackerArr[i];
+								
+								if( false == tracker.getFileReference().exists() ) {
+									
+									logger.info(String.format("Marking file for delete: %s", tracker.getFileReference().getAbsolutePath()));
+									
+									tracker.setFileDeleted(true);
+
+									this.sendPacketsForFile(tracker);
+									
+								} else if( false == tracker.equalsFile(tracker.getFileReference()) ) {
+									
+									logger.info(String.format("Found changes for file: %s", tracker.getFileReference().getAbsolutePath()));
+									
+									tracker.updateFileAttributes(tracker.getFileReference());						
+									tracker.setFileChanged(true);
+									
+									logger.info(String.format("Sending tracker to queue for file: %s", tracker.getFileReference().getAbsolutePath()));
+									
+									this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
+
+									this.sendPacketsForFile(tracker);
+									
+								}	else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
+										    BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ) {
+									
+										//Send packets for each tracker needing update
+										//Note: this state is set after the server processes tracker updates		
+										logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
+											
+										this.sendPacketsForFile(tracker);									
+								}
+
+								trackerFilePathList.add(tracker.getFileReference().getAbsolutePath());
 							}
 																						
 							trackerListCurrentPage += 1;
@@ -140,17 +186,17 @@ public class CloudBackupClient  implements CommandLineRunner {
 				}
 				
 				for(String directory : clientDirectoryIncludes) {
-					logger.info("Processing trackers in root directory %s for client with UUID: %s",							
+					logger.info(String.format("Processing file references in root directory %s for client with UUID: %s",							
 												directory,
-												clientId);
+												clientId));
+												
+					File dirFile = new File(directory);
 					
-					logger.info("Using repo type: %s, repo loc: %s, repo key: %s for client UUID: %s",
-									repoType, 
-									repoLoc, 
-									repoKey,
-									clientId);
-					
-					this.processTrackersForDirectory(clientId, directory, repoType, repoLoc, repoKey, trackerFileMap);
+					if( false == dirFile.exists() || false == dirFile.isDirectory() ) {
+						logger.error(String.format("File %s doesn't exist or is not a directory", directory));						
+					} else {									
+						processFileList(dirFile, trackerFilePathList);
+					}					
 				}					
 			}
 			
@@ -159,124 +205,33 @@ public class CloudBackupClient  implements CommandLineRunner {
 		}
 	}
 	
-	
-	public void processTrackersForDirectory(UUID clientID, 
-											 String rootDir,
-											 String repoType,
-											 String repoLoc,
-											 String repoKey,
-											 Dictionary<String,BackupFileTracker> trackerFileMap) throws Exception {
-				
-		if( null == rootDir ) {
-			logger.error("Null root directory argument passed to FileHandlerServiceImpl.updateFileTrackerListing");
-			throw new NullPointerException("Root directory name can't be null");
-		}
-				
-		scanFilesForDirectory(rootDir, trackerFileMap);
-		
-		//Check for deleted files that still have trackers
-		Enumeration<BackupFileTracker> enumTrackers = trackerFileMap.elements();
-		while(enumTrackers.hasMoreElements()) {
-			
-			BackupFileTracker tracker = enumTrackers.nextElement();		
-		
-			if( false == tracker.getFileReference().exists() ) {
-				
-				logger.info(String.format("Marking file for delete: %s", tracker.getFileReference().getAbsolutePath()));
-				
-				tracker.setFileDeleted(true);
+	private void processFileList(File trackerFile, List<String> trackerFilePathList) throws Exception {
 
-				this.sendPacketsForFile(tracker);
-				
-			} else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
-					    BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ) {
-				
-					// Send packets for each tracker needing update
-					//Note: this state is set after the server processes tracker updates		
-					logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
+		logger.info(String.format("Processing file: %s fir client %s", trackerFile.getAbsolutePath(), this.cbcConfig.getClientId().toString()));
 						
-					this.sendPacketsForFile(tracker);
-				
-			}
-		}	
-	}
-	
-	private void scanFilesForDirectory(String dir, Dictionary<String,BackupFileTracker> trackerFileMap) throws Exception {
-				
-		if( null == dir ) {
-			logger.error("Null directory argument passed to FileHandlerServiceImpl.scanFilesForDirectory");
-			throw new NullPointerException("Directory name can't be null");
-		} 
-
-		File dirFile = new File(dir);
-		
-		if( false == dirFile.exists() || false == dirFile.isDirectory() ) {
-			logger.error(String.format("File %s doesn't exist or is not a directory", dir));
-			throw new IOException(String.format("File %s doesn't exist or is not a directory", dir));
-		}
-						
-		processFileList(dirFile, trackerFileMap);		
-	}
-
-	private void processFileList(File dirFile, Dictionary<String,BackupFileTracker> trackerFileMap) throws Exception {
-
-		logger.info(String.format("Scanning files for directory: %s", dirFile.getAbsolutePath()));
-		
-		List<File> childDirs = new ArrayList<File>();
-		
-		handleLocalFileReference(dirFile, trackerFileMap);
-		
-		for(File f : dirFile.listFiles()) {
-			if( f.isDirectory() ) {
-				childDirs.add(f);
-			} 
-				
-			logger.info(String.format("Adding file or directory to scan list: %s", f.getAbsolutePath()));
-			//files.add(f);
+		if(false == trackerFilePathList.contains(trackerFile.getAbsolutePath())) {
 			
-			handleLocalFileReference(f, trackerFileMap);			
-		}
-		
-		for(File dir : childDirs) {
-			processFileList(dir, trackerFileMap);
-		}
-	}
-	
-	private void handleLocalFileReference(File currentFile, Dictionary<String, BackupFileTracker> trackerFileMap) throws Exception {
-		
-		BackupFileTracker foundTracker = trackerFileMap.get(currentFile.getAbsolutePath().toLowerCase());
-		
-		if(null == foundTracker) {
-			
-			logger.info(String.format("Existing file not found, tracker added: %s", currentFile.getAbsolutePath()));
+			logger.info(String.format("Existing file not found, tracker added: %s", trackerFile.getAbsolutePath()));
 			
 			BackupFileTracker newTracker = new BackupFileTracker(this.cbcConfig.getClientId(), 
 																 this.cbcConfig.getRepoType(), 
 																 this.cbcConfig.getRepoLoc(), 
 																 this.cbcConfig.getRepoKey(), 
-																 currentFile.getAbsolutePath());
+																 trackerFile.getAbsolutePath());
 			
 			newTracker.setFileChanged(true);
 			newTracker.setFileNew(true);
 							
-			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(newTracker);
-			
-		} else if( false == foundTracker.equalsFile(foundTracker.getFileReference()) ) {
-			
-			logger.info(String.format("Found changes for file: %s", foundTracker.getFileReference().getAbsolutePath()));
-			
-			foundTracker.updateFileAttributes(foundTracker.getFileReference());						
-			foundTracker.setFileChanged(true);
-			
-			logger.info(String.format("Sending tracker to queue for file: %s", foundTracker.getFileReference().getAbsolutePath()));
-			
-			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(foundTracker);
-			
-			//TODO Look into whether this might cause duplicate processing
-			this.sendPacketsForFile(foundTracker);				
-		}		
-	}
+			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(newTracker);			
+		}
 		
+		if( trackerFile.isDirectory() ) {						
+			for(File file : trackerFile.listFiles()) {
+				processFileList(file, trackerFilePathList);
+			}
+		}
+	}
+			
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {				
 		
 		if( null == fileTracker ) {
@@ -319,9 +274,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 			dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
 													   0,
 													   1,
-													   1,
-													   fileRef.getParent(),
-													   fileRef.getName(),
+													   1,													   
+													   "",
 													   "",
 													   action
 													);
@@ -330,27 +284,28 @@ public class CloudBackupClient  implements CommandLineRunner {
 							
 		} else {
 			
-			MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-			
-			try (FileInputStream fis = new FileInputStream(fileRef)) {				
-				byteCount = fis.read(readBytes);
-				
-				while(byteCount > 0) {
-					messageDigest.update(readBytes, 0, byteCount);
-					byteCount = fis.read(readBytes);
-				}					
-			}			
-		    
-		    fileTracker.setLastDigest(Base64.getEncoder().encodeToString(messageDigest.digest()));
-		    
-		    //Send an update just before packets to store checksum
-			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(fileTracker);
-			
 			//NOTE: dis could be used to create digest along with read but we have to
 			//      do this first so we don't have to store all packets at once.  Doing so
 			//      would blow out the heap for files.
 			//try(FileInputStream fis = new FileInputStream(fileRef);		
 				//	DigestInputStream dis = new DigestInputStream(fis, messageDigest)) {
+			
+			MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
+			
+			try(FileInputStream fis =  new FileInputStream(fileRef)) {
+							   
+			    int numRead;
+
+			    do {
+			       numRead = fis.read(readBytes);
+			       if (numRead > 0) {
+			    	   messageDigest.update(readBytes, 0, numRead);
+			       }
+			    } while (numRead != -1);	      
+			}
+			
+			String md5Digest = Base64.getEncoder().encodeToString(messageDigest.digest());
+		  
 			
 			fileLength = fileRef.length();
 			
@@ -406,10 +361,9 @@ public class CloudBackupClient  implements CommandLineRunner {
 					dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
 															   encodedBytes.length(),
 															   currentPacket,
-															   totalPackets,
-															   fileRef.getParent(),
-															   fileRef.getName(),
+															   totalPackets,															   															   
 															   encodedBytes,
+															   md5Digest,
 															   action
 															);
 					

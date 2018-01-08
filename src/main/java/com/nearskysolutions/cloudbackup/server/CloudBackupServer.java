@@ -1,6 +1,11 @@
 package com.nearskysolutions.cloudbackup.server;
 
+import java.util.ArrayList;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +23,8 @@ import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
-import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
 import com.nearskysolutions.cloudbackup.queue.ClientUpdateMessage;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
-import com.nearskysolutions.cloudbackup.services.BackupRestoreRequestService;
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
 
 @EnableJms
@@ -33,18 +36,47 @@ public class CloudBackupServer  implements CommandLineRunner {
 	Logger logger = LoggerFactory.getLogger(CloudBackupServer.class);
 			    
 	@Autowired
+	private CloudBackupServerConfig cbsConfig;
+	
+	@Autowired
 	@Qualifier("BackupStorageHandler")
 	private BackupStorageHandler backupStorageHandler;
 	
 	@Autowired 
 	private BackupFileDataService fileDataSvc;
+	
+	private Dictionary<String, ThreadPoolExecutor> threadBank;
 		
+	private static final String TRACKER_UPDATE_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.TrackerUpdateThread";
+	private static final String RESTORE_REQEUST_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.RestoreRequestThread";
+	private static final String SINGLE_PACKET_FILE_UPDATE_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.SingleFilePacketFileUpdateThread";
+	private static final String MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.TrackerUpdateThread_";
+	
+	
 	public void run(String... args) {
 		
 		try {
 									
 			logger.info("Starting CloudBackupServer...");			
 			
+			this.threadBank = new Hashtable<String, ThreadPoolExecutor>();
+			
+			this.threadBank.put(TRACKER_UPDATE_THREAD_NAME, (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbsConfig.getTrackerHandlerThreadCount()));
+			
+			this.threadBank.put(RESTORE_REQEUST_THREAD_NAME, (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbsConfig.getRestoreRequestHandlerThreadCount()));
+			
+			this.threadBank.put(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME, (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbsConfig.getSinglePacketHandlerThreadCount()));
+			
+			String threadNameChars = "abcdef1234567890";
+			
+			for(int i = 0; i < threadNameChars.length(); i++) {			
+				for(int j = 0; j < threadNameChars.length(); j++) {
+					
+					String threadNameKey = getThreadNameForTrackerFileID(String.format("%s%s", threadNameChars.substring(i, i+1), threadNameChars.substring(j, j+1))); 
+					
+					this.threadBank.put(threadNameKey, (ThreadPoolExecutor) Executors.newFixedThreadPool(1));		
+				}
+			}
 		} catch (Exception ex) {
 			logger.error("Server run failed", ex);
 			
@@ -52,9 +84,15 @@ public class CloudBackupServer  implements CommandLineRunner {
 		}
 	}
 	
+	private String getThreadNameForTrackerFileID(String trackerFileID) {
+		
+		return String.format("%s%s", MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX, trackerFileID.substring(0, 2));
+	}
+	
 	@JmsListener(destination = "com.nearskysolutions.cloudbackup.queue.nssCbuClientUpdates", containerFactory = "jmsFactory")
     public void receiveMessage(String message) throws Exception {
 
+		logger.info("receiveMessage in thread: " + Thread.currentThread().getName());
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
 		
 		ClientUpdateMessage updateMessage = (ClientUpdateMessage)JsonConverter.ConvertJsonToObject(message, ClientUpdateMessage.class);
@@ -65,18 +103,45 @@ public class CloudBackupServer  implements CommandLineRunner {
 		switch(updateMessage.getMessageType()) {
 			case FileTracker:
 				BackupFileTracker tracker = (BackupFileTracker)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileTracker.class);        	
-	        	logger.info(String.format("Processing add or update for backup file tracker ID: %s", tracker.getBackupFileTrackerID()));        	
-	        	this.addOrUpdateFileTracker(tracker);
+	        	logger.info(String.format("Processing add or update for backup file tracker ID: %s", tracker.getBackupFileTrackerID()));
+	        	
+	        	//Tracker update processing can be performed in parallel
+	        	this.threadBank.get(TRACKER_UPDATE_THREAD_NAME).submit(() -> {
+	        		this.addOrUpdateFileTracker(tracker);
+				    return null;
+				});
+	        	
 	        break;	
 			case FilePacket:        	
 	        	BackupFileDataPacket packet = (BackupFileDataPacket)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileDataPacket.class);        	
-	        	logger.info(String.format("Processing backup file packet with ID: %s", packet.getDataPacketID().toString()));        	
-	        	this.backupStorageHandler.processBackupPacket(packet);
+	        	logger.info(String.format("Processing backup file packet with ID: %s", packet.getDataPacketID().toString()));
+	        	
+	        	if( 1 == packet.getPacketsTotal() ) {
+	        		//Files that only require one packet can be handled in parallel
+	        		this.threadBank.get(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME).submit(() -> {
+	        			this.backupStorageHandler.processBackupPacket(packet);
+					    return null;
+					});	        		
+	        	} else {
+	        		//If the file requires more than one packet then handle on one
+	        		//of the alphabetical threads so the assembly remains serialized
+	        		this.threadBank.get(getThreadNameForTrackerFileID(packet.getFileTrackerID().toString())).submit(() -> {
+	        			this.backupStorageHandler.processBackupPacket(packet);
+					    return null;
+					});	
+	        	}
+	        	
 	        break;
 			case FileRestore:        	
 	        	BackupRestoreRequest restoreRequest = (BackupRestoreRequest)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupRestoreRequest.class);        	
 	        	logger.info(String.format("Processing restore request ID: %s", restoreRequest.getRequestID().toString()));
-	        	this.processRestoreRequest(restoreRequest);	        	        	        	
+	        	
+	        	//Restore requests can be performed in parallel
+	        	this.threadBank.get(RESTORE_REQEUST_THREAD_NAME).submit(() -> {
+	        		this.processRestoreRequest(restoreRequest);
+				    return null;
+				});        	
+	        		        	        	        	
 	        	break;        	
 	        default:
 	        	throw new Exception(String.format("Unknown message update type: %s for messsage ID: %s", 
@@ -84,10 +149,11 @@ public class CloudBackupServer  implements CommandLineRunner {
 		}
 		
 		logger.trace("Completed CloudBackupServer.receiveMessage(String message)");
-    }
-	
+    }	
+		
 	private void addOrUpdateFileTracker(BackupFileTracker newTracker) throws Exception { 
 		 
+		logger.info("Processing tracker update on thread: " + Thread.currentThread().getName());
 		if( null == newTracker ) {
 			logger.error("Null tracker passed to CloudBackupServer.updateFileTrackerListing");
 			throw new NullPointerException("tracker can't be null");

@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
@@ -134,6 +135,8 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				if( 1 != packet.getPacketNumber() ) {
 				
 					if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus() ) {						
+						retryTracker = true;
+						
 						throw new Exception(String.format("Invalid state for packet number out of order and can't process for packetID: %s, tracker ID: %s", 
 															packetID.toString(), trackerID.toString()));						
 					} else	if(false == tmpFile.exists() ) {						
@@ -180,30 +183,30 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 								
 					logger.info(String.format("Completed write for last packet of tracker: %s, comparing checksum digest", trackerID.toString())); 
 					
-					MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-					 
+					//Create digest for MD5 hash					
+					MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
+					
 					try(FileInputStream fis =  new FileInputStream(tmpFile)) {
 						byte[] mdBytes = new byte[4096];
-				       
-				        int numRead;
+					   
+					    int numRead;
 
-				        do {
-				           numRead = fis.read(mdBytes);
-				           if (numRead > 0) {
-				        	   messageDigest.update(mdBytes, 0, numRead);
-				           }
-				        } while (numRead != -1);	      
+					    do {
+					       numRead = fis.read(mdBytes);
+					       if (numRead > 0) {
+					    	   messageDigest.update(mdBytes, 0, numRead);
+					       }
+					    } while (numRead != -1);	      
 					}
 					
-					byte[] md5Complete = messageDigest.digest();
-					String md5Encoded = Base64.getEncoder().encodeToString(md5Complete);
-
-					if( false == md5Encoded.equals(tracker.getLastDigest()) ) {						
+					String md5Encoded = Base64.getEncoder().encodeToString(messageDigest.digest());
+					
+					if( false == md5Encoded.equals(packet.getFileChecksumDigest()) ) {						
 						logger.info(String.format("Checksum mis-match for tracker: %s, marking tracker for retry", trackerID.toString()));
 						
 						retryTracker = true;
 						
-						throw new Exception("Unable to file due to checksum error");
+						throw new Exception("Unable to create zip file due to checksum error");
 					} else {						
 						logger.info(String.format("Checksum match for tracker: %s, creating final storage file", trackerID.toString()));
 						
@@ -251,7 +254,25 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		logger.trace(String.format("Completed BackupStorageLocalHandler.processBackupPacket(BackupFileDataPacket packet): packetID = %s", packet.getDataPacketID()));
 	}
 
-	 	 
+	synchronized private byte[] calculateMD5DigestForFile(File tmpFile) throws Exception {
+		MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
+				
+		try(FileInputStream fis =  new FileInputStream(tmpFile)) {
+			byte[] mdBytes = new byte[4096];
+		   
+		    int numRead;
+
+		    do {
+		       numRead = fis.read(mdBytes);
+		       if (numRead > 0) {
+		    	   messageDigest.update(mdBytes, 0, numRead);
+		       }
+		    } while (numRead != -1);	      
+		}
+		
+		return messageDigest.digest();		
+	}	 	 
+	     
 	private File getTrackerDirectory(BackupFileTracker tracker) {
 		
 		File fileDir = new File(String.format("%s%s%s%s%s", 

@@ -55,6 +55,12 @@
       "type": "java.lang.String"
     },
     {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.client.tracker-list-page-size",
+      "type": "java.lang.Integer"
+    },
+    {
       "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
       "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.server.file-packet-size",
@@ -74,6 +80,24 @@
       "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
       "name": "com.nearskysolutions.cloudbackup.server.repo-type",
       "type": "java.lang.String"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.server.restore-request-handler-thread-count",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.server.single-packet-handler-thread-count",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.server.tracker-handler-thread-count",
+      "type": "java.lang.Integer"
     }
   ]
 }

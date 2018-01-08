@@ -30,7 +30,8 @@ public class CloudBackupClientConfig {
 	private String backupClientAdminSvcUrl;
 	private String backupTrackerAdminSvcUrl;
 	private boolean isClientTestMode;
-		
+	private int trackerListPageSize;
+	
 	public int getFilePacketSize() {
 		return filePacketSize;
 	}
@@ -101,6 +102,14 @@ public class CloudBackupClientConfig {
 
 	public void setIsClientTestMode(boolean isClientTestMode) {
 		this.isClientTestMode = isClientTestMode;
+	}
+	
+	public int getTrackerListPageSize() {
+		return trackerListPageSize;
+	}
+
+	public void setTrackerListPageSize(int trackerListPageSize) {
+		this.trackerListPageSize = trackerListPageSize;
 	}
 
 }

@@ -26,6 +26,9 @@ public class CloudBackupServerConfig {
 	private String repoType;
 	private String repoLoc;
 	private String repoKey;
+	private int trackerHandlerThreadCount;
+	private int singlePacketHandlerThreadCount;
+	private int restoreRequestHandlerThreadCount;
 	
 	public int getFilePacketSize() {
 		return filePacketSize;
@@ -57,5 +60,29 @@ public class CloudBackupServerConfig {
 
 	public void setRepoKey(String repoKey) {
 		this.repoKey = repoKey;
-	}	
+	}
+	
+	public int getTrackerHandlerThreadCount() {
+		return trackerHandlerThreadCount;
+	}
+
+	public void setTrackerHandlerThreadCount(int trackerHandlerThreadCount) {
+		this.trackerHandlerThreadCount = trackerHandlerThreadCount;
+	}
+	
+	public int getSinglePacketHandlerThreadCount() {
+		return singlePacketHandlerThreadCount;
+	}
+
+	public void setSinglePacketHandlerThreadCount(int singlePacketHandlerThreadCount) {
+		this.singlePacketHandlerThreadCount = singlePacketHandlerThreadCount;
+	}
+
+	public int getRestoreRequestHandlerThreadCount() {
+		return restoreRequestHandlerThreadCount;
+	}
+
+	public void setRestoreRequestHandlerThreadCount(int restoreRequestHandlerThreadCount) {
+		this.restoreRequestHandlerThreadCount = restoreRequestHandlerThreadCount;
+	}
 }

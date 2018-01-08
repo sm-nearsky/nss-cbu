@@ -10,10 +10,8 @@ public class BackupFileDataPacket {
 	private int bytesContained;
 	private int packetNumber;
 	private int packetsTotal;
-	private String fileDirectory;
-	private String fileName;
 	private String packetData;
-	private File fileRef;
+	private String fileChecksumDigest;
 	
 	public enum FileAction {
 		Create,
@@ -26,8 +24,8 @@ public class BackupFileDataPacket {
 	protected BackupFileDataPacket() { }
 	
 	public BackupFileDataPacket(UUID fileTrackerID, int bytesContained, int packetNumber,
-								int packetsTotal, String fileDirectory, String fileName, 
-								String packetData, FileAction fileAction) {
+								int packetsTotal, String packetData, String fileChecksumDigest,
+								FileAction fileAction) {
 		
 		this.dataPacketID = UUID.randomUUID();
 		
@@ -35,10 +33,9 @@ public class BackupFileDataPacket {
 		this.fileTrackerID = fileTrackerID;
 		this.bytesContained = bytesContained;
 		this.packetNumber = packetNumber;		
-		this.packetsTotal = packetsTotal;
-		this.fileName = fileName;
-		this.fileDirectory = fileDirectory;		
+		this.packetsTotal = packetsTotal;	
 		this.packetData = packetData;
+		this.fileChecksumDigest = fileChecksumDigest;
 		this.fileAction = fileAction;
 	}
 	
@@ -93,42 +90,21 @@ public class BackupFileDataPacket {
 	public void setFileAction(FileAction fileAction) {
 		this.fileAction = fileAction;
 	}
-	
-	public String getFileDirectory() {
-		return fileDirectory;
+		
+	public String getFileChecksumDigest() {
+		return fileChecksumDigest;
 	}
 
-	public void setFileDirectory(String fileDirectory) {
-		this.fileDirectory = fileDirectory;
-		
-		this.fileRef = null;
-	}
-
-	public String getFileName() {
-		return fileName;
-	}
-
-	public void setFileName(String fileName) {
-		this.fileName = fileName;
-		
-		this.fileRef = null;
-	}
-	
-	public File getFileReference() {		
-		if(null == fileRef) {
-			fileRef = new File(String.format("%s%s%s", this.getFileDirectory(), File.separator, this.getFileName()));
-		}
-		
-		return fileRef;
+	public void setFileChecksumDigest(String fileChecksumDigest) {
+		this.fileChecksumDigest = fileChecksumDigest;
 	}
 	
 	@Override
 	public String toString() {
 		return String.format("BackupFileDataPacket[dataPacketID=%d, fileTrackerID=%d, bytesContained=%d, "+
-								"packetNumber=%d, packetsTotal=%d, fileDirectory=%s, fileName=%s, fileAction=%s "+
-								"fileData.length=%d]", 
+								"packetNumber=%d, packetsTotal=%d, fileAction=%s, fileData.length=%d]", 
 								dataPacketID, fileTrackerID, bytesContained, packetNumber, packetsTotal, 
-								fileDirectory, fileName, fileAction, (packetData == null ? 0 : packetData.length()));
+								fileAction, (packetData == null ? 0 : packetData.length()));
 	}	
 	 
 }

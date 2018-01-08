@@ -50,7 +50,7 @@ public class BackupFileTracker {
 	
 	@Column(name="file_full_path")
 	private String fileFullPath;
-	
+
 	@Column(name="source_directory", nullable=true)
 	private String sourceDirectory;
 	
@@ -62,9 +62,6 @@ public class BackupFileTracker {
 	
 	@OneToOne(cascade=CascadeType.ALL) 
 	private BackupFileAttributes fileAttributes;
-	
-	@Column(name="last_digest", nullable=true)
-	private String lastDigest;
 	
 	@Column(name="last_error", nullable=true)
 	private String lastError;
@@ -266,14 +263,6 @@ public class BackupFileTracker {
 		this.isFileNew = isFileNew;
 	}
 	
-	public String getLastDigest() {
-		return lastDigest;
-	}
-
-	public void setLastDigest(String lastDigest) {
-		this.lastDigest = lastDigest;
-	}
-
 	public String getLastError() {
 		return lastError;
 	}
@@ -290,13 +279,17 @@ public class BackupFileTracker {
 		this.lastStatusChange = lastStatusChange;
 	}
 	
+	public String getFileFullPath() {
+		return fileFullPath;
+	}
+	
 	@Override
 	public String toString() {
 		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
-								"backupRepositoryKey=%s, fileName=%s, sourceDirectory=%s, trackerStatus=%s, lastError=%s, " +
+								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, trackerStatus=%s, lastError=%s, " +
 								"lastStatusChange=%s, isFileDeleted=%s, fileAttributes=%s]",
 								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
-								fileName, sourceDirectory, trackerStatus.toString(), lastError, lastStatusChange, isFileDeleted, fileAttributes);
+								fileName, fileFullPath, sourceDirectory, trackerStatus.toString(), lastError, lastStatusChange, isFileDeleted, fileAttributes);
 	}
 
 	public boolean equalsFile(File compareFile) throws IOException {
