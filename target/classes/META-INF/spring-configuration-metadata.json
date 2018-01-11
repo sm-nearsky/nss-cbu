@@ -35,8 +35,22 @@
     },
     {
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
-      "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.client.file-packet-size",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "name": "com.nearskysolutions.cloudbackup.client.packet-send-before-pause",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "name": "com.nearskysolutions.cloudbackup.client.packet-send-pause-seconds",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "name": "com.nearskysolutions.cloudbackup.client.packet-send-thread-count",
       "type": "java.lang.Integer"
     },
     {
@@ -56,7 +70,6 @@
     },
     {
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
-      "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.client.tracker-list-page-size",
       "type": "java.lang.Integer"
     },

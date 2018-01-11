@@ -31,6 +31,9 @@ public class CloudBackupClientConfig {
 	private String backupTrackerAdminSvcUrl;
 	private boolean isClientTestMode;
 	private int trackerListPageSize;
+	private int packetSendThreadCount;
+	private int packetSendBeforePause;
+	private int packetSendPauseSeconds;
 	
 	public int getFilePacketSize() {
 		return filePacketSize;
@@ -110,6 +113,30 @@ public class CloudBackupClientConfig {
 
 	public void setTrackerListPageSize(int trackerListPageSize) {
 		this.trackerListPageSize = trackerListPageSize;
+	}
+	
+	public int getPacketSendThreadCount() {
+		return packetSendThreadCount;
+	}
+
+	public void setPacketSendThreadCount(int packetSendThreadCount) {
+		this.packetSendThreadCount = packetSendThreadCount;
+	}
+	
+	public int getPacketSendBeforePause() {
+		return packetSendBeforePause;
+	}
+
+	public void setPacketSendBeforePause(int packetSendBeforePause) {
+		this.packetSendBeforePause = packetSendBeforePause;
+	}
+
+	public int getPacketSendPauseSeconds() {
+		return packetSendPauseSeconds;
+	}
+
+	public void setPacketSendPauseSeconds(int packetSendPauseSeconds) {
+		this.packetSendPauseSeconds = packetSendPauseSeconds;
 	}
 
 }

@@ -4,15 +4,15 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,18 +49,33 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private RestTemplate restTemplate;
 	
+	private ThreadPoolExecutor packetSendThreadPool;	
+		
+	private AtomicInteger currentProcessingCount = new AtomicInteger(0);
+	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
+	
 	public void run(String... args) {
 	
 		try {
 			
 			this.restTemplate = new RestTemplate();
 			
+			packetSendThreadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbcConfig.getPacketSendThreadCount());
+
 			this.scanAndSendBackups();
 			
 		} catch (Exception ex) {
 			logger.error("Unable to process backups due to exception", ex);
 		}	
-			
+		
+		while(0 < currentProcessingCount.get() ) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException ex) {
+				logger.error("Error in sleep wait", ex);
+			}
+		}
+		
 		System.exit(0);
 		
 	}
@@ -93,12 +108,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 						
 			if(null == clientDirectoryIncludes || 0 == clientDirectoryIncludes.size()) {
 				clientDirectoryIncludes = backupClient.getDirectoryIncludes();
-			}
-						
-			String repoType = (cbcConfig.getRepoType() != null) ? cbcConfig.getRepoType() : backupClient.getCurrentRepositoryType();
-			String repoLoc = (cbcConfig.getRepoLoc() != null) ? cbcConfig.getRepoLoc() : backupClient.getCurrentRepositoryLocation();
-			String repoKey = (cbcConfig.getRepoKey() != null) ? cbcConfig.getRepoKey() : backupClient.getCurrentRepositoryKey();
-			
+			}						
+				
 			logger.info(String.format("Scanning directory includes for clientId: %s", clientId));
 			
 			if( null == clientDirectoryIncludes || 0 == clientDirectoryIncludes.size() ) {
@@ -118,7 +129,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				boolean isMoreTrackers = true;
 				int trackerListCurrentPage = 0;
 				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();
-				
+								
 				//Collect all trackers from service
 				while(isMoreTrackers) {
 
@@ -185,6 +196,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 					}					
 				}
 				
+				Collections.sort(trackerFilePathList);
+				
 				for(String directory : clientDirectoryIncludes) {
 					logger.info(String.format("Processing file references in root directory %s for client with UUID: %s",							
 												directory,
@@ -208,9 +221,12 @@ public class CloudBackupClient  implements CommandLineRunner {
 	private void processFileList(File trackerFile, List<String> trackerFilePathList) throws Exception {
 
 		logger.info(String.format("Processing file: %s fir client %s", trackerFile.getAbsolutePath(), this.cbcConfig.getClientId().toString()));
-						
-		if(false == trackerFilePathList.contains(trackerFile.getAbsolutePath())) {
 			
+		
+		if(trackerFilePathList.contains(trackerFile.getAbsolutePath())) {
+			//Existing file found in tracker list, no need to take action or keep in the list
+			trackerFilePathList.remove(trackerFile.getAbsolutePath());
+		} else {			
 			logger.info(String.format("Existing file not found, tracker added: %s", trackerFile.getAbsolutePath()));
 			
 			BackupFileTracker newTracker = new BackupFileTracker(this.cbcConfig.getClientId(), 
@@ -232,144 +248,171 @@ public class CloudBackupClient  implements CommandLineRunner {
 		}
 	}
 			
-	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {				
+	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
+		this.packetSendThreadPool.submit(() -> {
+			this.handleSendPackets(fileTracker);
+		    return null;
+		});	
+	}
+	
+	private void handleSendPackets(BackupFileTracker fileTracker) throws Exception {
 		
 		if( null == fileTracker ) {
 			throw new NullPointerException("BackupFileTracker fileTracker) throws reference can't be null");
 		}
+		
 		File fileRef = fileTracker.getFileReference();
 		
 		if (false == fileRef.exists() && false == fileTracker.isFileDeleted() ) {
 			throw new Exception(String.format("File %s doesn't exist", fileRef.getAbsolutePath()));
 		} 
 		
-		logger.info(String.format("Preparing packets for file or dir: %s", fileRef.getAbsolutePath()));
+		try {
 				
-		BackupFileDataPacket dataPacket;
-		ByteArrayInputStream bais;
-		ByteArrayOutputStream baos;
-		int packetSize = this.cbcConfig.getFilePacketSize();
-		byte[] readBytes = new byte[packetSize];
-		int byteCount;
-		int idx;			
-		byte[] fileBytes;
-		long fileLength;
-		int currentPacket; 
-		int totalPackets;
-		
-		FileAction action;
-        
-        if( fileTracker.isFileDeleted() ) {
-        	action = FileAction.Delete;
-        } else if ( fileTracker.isFileNew() ) {
-        	action = FileAction.Create;
-        } else {
-        	action = FileAction.Update;
-        }
-        	
-		if(fileRef.isDirectory() || fileRef.length() == 0 || FileAction.Delete == action) {
-							
-			logger.info(String.format("Saving directory or zero length file for ref: %s", fileRef.getAbsolutePath()));
-							
-			dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
-													   0,
-													   1,
-													   1,													   
-													   "",
-													   "",
-													   action
-													);
+			currentProcessingCount.incrementAndGet();
 			
-			this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
-							
-		} else {
+			logger.info(String.format("Preparing packets for file or dir: %s", fileRef.getAbsolutePath()));
+					
+			BackupFileDataPacket dataPacket;
+			ByteArrayInputStream bais;
+			ByteArrayOutputStream baos;
+			int packetSize = this.cbcConfig.getFilePacketSize();
+			byte[] readBytes = new byte[packetSize];
+			int byteCount;
+			int idx;			
+			byte[] fileBytes;
+			long fileLength;
+			int currentPacket; 
+			int totalPackets;
 			
-			//NOTE: dis could be used to create digest along with read but we have to
-			//      do this first so we don't have to store all packets at once.  Doing so
-			//      would blow out the heap for files.
-			//try(FileInputStream fis = new FileInputStream(fileRef);		
-				//	DigestInputStream dis = new DigestInputStream(fis, messageDigest)) {
-			
-			MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
-			
-			try(FileInputStream fis =  new FileInputStream(fileRef)) {
-							   
-			    int numRead;
-
-			    do {
-			       numRead = fis.read(readBytes);
-			       if (numRead > 0) {
-			    	   messageDigest.update(readBytes, 0, numRead);
-			       }
-			    } while (numRead != -1);	      
-			}
-			
-			String md5Digest = Base64.getEncoder().encodeToString(messageDigest.digest());
-		  
-			
-			fileLength = fileRef.length();
-			
-			if( fileLength <  packetSize ) {
-				totalPackets = 1;
+			FileAction action;
+	        
+	        if( fileTracker.isFileDeleted() ) {
+	        	action = FileAction.Delete;
+	        } else if ( fileTracker.isFileNew() ) {
+	        	action = FileAction.Create;
+	        } else {
+	        	action = FileAction.Update;
+	        }
+	        	
+			if(fileRef.isDirectory() || fileRef.length() == 0 || FileAction.Delete == action) {
+								
+				logger.info(String.format("Saving directory or zero length file for ref: %s", fileRef.getAbsolutePath()));
+								
+				dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
+														   0,
+														   1,
+														   1,													   
+														   "",
+														   "",
+														   action
+														);
+				
+				this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
+								
 			} else {
-				totalPackets = (int)(fileLength / (long)packetSize);
 				
-				//Likely that file length isn't evenly divisible by
-				//packet size so there will be on left over
-				if( totalPackets % packetSize != 0 ) {
-					totalPackets += 1;
+				//NOTE: dis could be used to create digest along with read but we have to
+				//      do this first so we don't have to store all packets at once.  Doing so
+				//      would blow out the heap for files.
+				//try(FileInputStream fis = new FileInputStream(fileRef);		
+					//	DigestInputStream dis = new DigestInputStream(fis, messageDigest)) {
+				
+				MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
+				
+				try(FileInputStream fis =  new FileInputStream(fileRef)) {
+								   
+				    int numRead;
+	
+				    do {
+				       numRead = fis.read(readBytes);
+				       if (numRead > 0) {
+				    	   messageDigest.update(readBytes, 0, numRead);
+				       }
+				    } while (numRead != -1);	      
 				}
-			}
-			
-			try(FileInputStream fis = new FileInputStream(fileRef)) {
 				
-				idx = 0;
-				currentPacket = 0;
+				String md5Digest = Base64.getEncoder().encodeToString(messageDigest.digest());
+			  
 				
-				while(idx < fileRef.length()) {
+				fileLength = fileRef.length();
+				
+				if( fileLength <  packetSize ) {
+					totalPackets = 1;
+				} else {
+					totalPackets = (int)(fileLength / (long)packetSize);
 					
-					byteCount = fis.read(readBytes);
-					
-					idx += byteCount;
-					
-					if(readBytes.length == byteCount) {
-						fileBytes = readBytes;
-					} else {
-						fileBytes = new byte[byteCount];
-						
-						System.arraycopy(readBytes, 0, fileBytes, 0, byteCount);
+					//Likely that file length isn't evenly divisible by
+					//packet size so there will be on left over
+					if( totalPackets % packetSize != 0 ) {
+						totalPackets += 1;
 					}
-					
-					bais = new ByteArrayInputStream(fileBytes);
-					baos = new ByteArrayOutputStream();
-															
-					FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), idx-byteCount, idx));
-					
-					bais.close();
-					baos.close();
-					
-					logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), idx));
-										
-			        
-			        
-			        //Convert bytes to base64
-					logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), idx));
-					
-					String encodedBytes = Base64.getEncoder().encodeToString(baos.toByteArray());
-					currentPacket += 1;
-					
-					dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
-															   encodedBytes.length(),
-															   currentPacket,
-															   totalPackets,															   															   
-															   encodedBytes,
-															   md5Digest,
-															   action
-															);
-					
-					this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
 				}
-			}
-		}		
+				
+				try(FileInputStream fis = new FileInputStream(fileRef)) {
+					
+					idx = 0;
+					currentPacket = 0;
+					
+					while(idx < fileRef.length()) {
+						
+						
+						
+						byteCount = fis.read(readBytes);
+						
+						idx += byteCount;
+						
+						if(readBytes.length == byteCount) {
+							fileBytes = readBytes;
+						} else {
+							fileBytes = new byte[byteCount];
+							
+							System.arraycopy(readBytes, 0, fileBytes, 0, byteCount);
+						}
+						
+						bais = new ByteArrayInputStream(fileBytes);
+						baos = new ByteArrayOutputStream();
+																
+						FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), idx-byteCount, idx));
+						
+						bais.close();
+						baos.close();
+						
+						logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), idx));
+											
+				        
+				        
+				        //Convert bytes to base64
+						logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), idx));
+						
+						String encodedBytes = Base64.getEncoder().encodeToString(baos.toByteArray());
+						currentPacket += 1;
+						
+						dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
+																   encodedBytes.length(),
+																   currentPacket,
+																   totalPackets,															   															   
+																   encodedBytes,
+																   md5Digest,
+																   action
+																);
+						
+						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
+						
+						//Sleep after configured packet max to let queues catch up
+						//and garbage collection occur
+						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
+							logger.info("Backing off packet send after sending max packets");
+							Thread.sleep(cbcConfig.getPacketSendPauseSeconds() * 1000);
+							
+							globalPacketSendCount.set(0);
+						}
+					}				
+				
+				}
+			}		
+		} finally {
+			currentProcessingCount.decrementAndGet();
+		}
 	}
 }
