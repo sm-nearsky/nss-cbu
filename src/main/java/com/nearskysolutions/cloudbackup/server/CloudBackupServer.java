@@ -77,6 +77,9 @@ public class CloudBackupServer  implements CommandLineRunner {
 					this.threadBank.put(threadNameKey, (ThreadPoolExecutor) Executors.newFixedThreadPool(1));		
 				}
 			}
+			
+			//TODO Add clean-up for temp files left behind after aborted
+			//     file saves
 		} catch (Exception ex) {
 			logger.error("Server run failed", ex);
 			

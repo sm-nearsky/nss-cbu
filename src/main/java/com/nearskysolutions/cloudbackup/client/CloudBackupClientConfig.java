@@ -33,7 +33,8 @@ public class CloudBackupClientConfig {
 	private int trackerListPageSize;
 	private int packetSendThreadCount;
 	private int packetSendBeforePause;
-	private int packetSendPauseSeconds;
+	private int trackerSendBeforePause;
+	private int messageSendPauseSeconds;
 	
 	public int getFilePacketSize() {
 		return filePacketSize;
@@ -131,12 +132,20 @@ public class CloudBackupClientConfig {
 		this.packetSendBeforePause = packetSendBeforePause;
 	}
 
-	public int getPacketSendPauseSeconds() {
-		return packetSendPauseSeconds;
+	public int getTrackerSendBeforePause() {
+		return trackerSendBeforePause;
 	}
 
-	public void setPacketSendPauseSeconds(int packetSendPauseSeconds) {
-		this.packetSendPauseSeconds = packetSendPauseSeconds;
+	public void setTrackerSendBeforePause(int trackerSendBeforePause) {
+		this.trackerSendBeforePause = trackerSendBeforePause;
+	}
+	
+	public int getMessageSendPauseSeconds() {
+		return messageSendPauseSeconds;
+	}
+
+	public void setMessageSendPauseSeconds(int packetSendPauseSeconds) {
+		this.messageSendPauseSeconds = packetSendPauseSeconds;
 	}
 
 }

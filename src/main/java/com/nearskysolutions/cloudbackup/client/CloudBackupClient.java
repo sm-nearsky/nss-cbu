@@ -7,7 +7,9 @@ import java.io.FileInputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -53,6 +55,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 		
 	private AtomicInteger currentProcessingCount = new AtomicInteger(0);
 	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
+	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
 	
 	public void run(String... args) {
 	
@@ -129,7 +132,12 @@ public class CloudBackupClient  implements CommandLineRunner {
 				boolean isMoreTrackers = true;
 				int trackerListCurrentPage = 0;
 				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();
-								
+				
+				Calendar cal = Calendar.getInstance();				
+				cal.add(Calendar.HOUR, -48);
+				
+				Date twoDaysAgo = cal.getTime();
+				
 				//Collect all trackers from service
 				while(isMoreTrackers) {
 
@@ -172,14 +180,15 @@ public class CloudBackupClient  implements CommandLineRunner {
 									tracker.updateFileAttributes(tracker.getFileReference());						
 									tracker.setFileChanged(true);
 									
-									logger.info(String.format("Sending tracker to queue for file: %s", tracker.getFileReference().getAbsolutePath()));
-									
-									this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
+									this.sendTrackerUpdate(tracker);
 
 									this.sendPacketsForFile(tracker);
 									
 								}	else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
-										    BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ) {
+										    	BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ||
+										    	(BackupFileTrackerStatus.Processing == tracker.getTrackerStatus() &&
+										    		tracker.getLastStatusChange().before(twoDaysAgo)) 
+										    ) {
 									
 										//Send packets for each tracker needing update
 										//Note: this state is set after the server processes tracker updates		
@@ -238,16 +247,34 @@ public class CloudBackupClient  implements CommandLineRunner {
 			newTracker.setFileChanged(true);
 			newTracker.setFileNew(true);
 							
-			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(newTracker);			
+			this.sendTrackerUpdate(newTracker);			
 		}
 		
-		if( trackerFile.isDirectory() ) {						
+		if( trackerFile.isDirectory() && null != trackerFile.listFiles() ) {						
 			for(File file : trackerFile.listFiles()) {
 				processFileList(file, trackerFilePathList);
 			}
 		}
 	}
 			
+	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {
+		
+		//Note: Don't need process count for tracker updates because these currently
+		//      all happen on the main thread.  Still need throttle to avoid over running 
+		//      the queue.
+		logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
+						tracker.getFileReference().getAbsolutePath(), (null != tracker.getBackupFileTrackerID())));
+		
+		this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
+		
+		if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
+			logger.info("Backing off tracker send after sending max messages");
+			Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
+			
+			this.globalTrackerSendCount.set(0);
+		}
+	}
+	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
 		this.packetSendThreadPool.submit(() -> {
 			this.handleSendPackets(fileTracker);
@@ -356,8 +383,6 @@ public class CloudBackupClient  implements CommandLineRunner {
 					
 					while(idx < fileRef.length()) {
 						
-						
-						
 						byteCount = fis.read(readBytes);
 						
 						idx += byteCount;
@@ -379,8 +404,6 @@ public class CloudBackupClient  implements CommandLineRunner {
 						baos.close();
 						
 						logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), idx));
-											
-				        
 				        
 				        //Convert bytes to base64
 						logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), idx));
@@ -397,22 +420,25 @@ public class CloudBackupClient  implements CommandLineRunner {
 																   action
 																);
 						
+						logger.info(String.format("Sending packet %d of %d for file: %s, tracker ID: %s",
+								dataPacket.getPacketNumber(), dataPacket.getPacketsTotal(), fileTracker.getFileFullPath(), fileTracker.getBackupFileTrackerID()));
+						
 						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
 						
 						//Sleep after configured packet max to let queues catch up
 						//and garbage collection occur
 						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
-							logger.info("Backing off packet send after sending max packets");
-							Thread.sleep(cbcConfig.getPacketSendPauseSeconds() * 1000);
+							logger.info("Backing off packet send after sending max messages");
+							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
 							
-							globalPacketSendCount.set(0);
+							this.globalPacketSendCount.set(0);
 						}
 					}				
 				
 				}
 			}		
 		} finally {
-			currentProcessingCount.decrementAndGet();
+			this.currentProcessingCount.decrementAndGet();
 		}
 	}
 }
