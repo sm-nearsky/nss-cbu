@@ -10,6 +10,7 @@ public class BackupFileDataPacket {
 	private int bytesContained;
 	private int packetNumber;
 	private int packetsTotal;
+	private long endingFileByteCount;
 	private String packetData;
 	private String fileChecksumDigest;
 	
@@ -23,15 +24,16 @@ public class BackupFileDataPacket {
 	
 	protected BackupFileDataPacket() { }
 	
-	public BackupFileDataPacket(UUID fileTrackerID, int bytesContained, int packetNumber,
-								int packetsTotal, String packetData, String fileChecksumDigest,
-								FileAction fileAction) {
+	public BackupFileDataPacket(UUID fileTrackerID, int bytesContained, long endingFileByteCount, 
+								int packetNumber, int packetsTotal, String packetData, 
+								String fileChecksumDigest, FileAction fileAction) {
 		
 		this.dataPacketID = UUID.randomUUID();
 		
 		this.dataPacketID = UUID.randomUUID();
 		this.fileTrackerID = fileTrackerID;
 		this.bytesContained = bytesContained;
+		this.endingFileByteCount = endingFileByteCount;
 		this.packetNumber = packetNumber;		
 		this.packetsTotal = packetsTotal;	
 		this.packetData = packetData;
@@ -98,13 +100,22 @@ public class BackupFileDataPacket {
 	public void setFileChecksumDigest(String fileChecksumDigest) {
 		this.fileChecksumDigest = fileChecksumDigest;
 	}
+
+	public long getEndingFileByteCount() {
+		return endingFileByteCount;
+	}
+
+	public void setEndingFileByteCount(long endingFileByteCount) {
+		this.endingFileByteCount = endingFileByteCount;
+	}
 	
 	@Override
 	public String toString() {
 		return String.format("BackupFileDataPacket[dataPacketID=%d, fileTrackerID=%d, bytesContained=%d, "+
-								"packetNumber=%d, packetsTotal=%d, fileAction=%s, fileData.length=%d]", 
+								"packetNumber=%d, packetsTotal=%d, fileAction=%s, fileData.length=%d " +
+								"endingFileByteCount=%d]", 
 								dataPacketID, fileTrackerID, bytesContained, packetNumber, packetsTotal, 
-								fileAction, (packetData == null ? 0 : packetData.length()));
+								fileAction, (packetData == null ? 0 : packetData.length()), endingFileByteCount);
 	}	
 	 
 }

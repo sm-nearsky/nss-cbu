@@ -20,23 +20,13 @@ import org.springframework.stereotype.Component;
 @PropertySource({"classpath:persistence-${env}.properties",	
 					"classpath:application-server-${env}.properties"})
 public class CloudBackupServerConfig {
-	
-	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
-	private int filePacketSize;
+
 	private String repoType;
 	private String repoLoc;
 	private String repoKey;
 	private int trackerHandlerThreadCount;
 	private int singlePacketHandlerThreadCount;
 	private int restoreRequestHandlerThreadCount;
-	
-	public int getFilePacketSize() {
-		return filePacketSize;
-	}
-
-	public void setFilePacketSize(int filePacketSize) {
-		this.filePacketSize = filePacketSize;
-	}
 
 	public String getRepoType() {
 		return repoType;

@@ -132,12 +132,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				boolean isMoreTrackers = true;
 				int trackerListCurrentPage = 0;
 				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();
-				
-				Calendar cal = Calendar.getInstance();				
-				cal.add(Calendar.HOUR, -48);
-				
-				Date twoDaysAgo = cal.getTime();
-				
+								
 				//Collect all trackers from service
 				while(isMoreTrackers) {
 
@@ -185,9 +180,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 									this.sendPacketsForFile(tracker);
 									
 								}	else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
-										    	BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ||
-										    	(BackupFileTrackerStatus.Processing == tracker.getTrackerStatus() &&
-										    		tracker.getLastStatusChange().before(twoDaysAgo)) 
+										     BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ||
+										     BackupFileTrackerStatus.Processing == tracker.getTrackerStatus()
 										    ) {
 									
 										//Send packets for each tracker needing update
@@ -306,7 +300,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			int packetSize = this.cbcConfig.getFilePacketSize();
 			byte[] readBytes = new byte[packetSize];
 			int byteCount;
-			int idx;			
+			long fileByteEndIndex;			
 			byte[] fileBytes;
 			long fileLength;
 			int currentPacket; 
@@ -328,6 +322,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 								
 				dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
 														   0,
+														   0,
 														   1,
 														   1,													   
 														   "",
@@ -347,16 +342,12 @@ public class CloudBackupClient  implements CommandLineRunner {
 				
 				MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
 				
-				try(FileInputStream fis =  new FileInputStream(fileRef)) {
-								   
+				try(FileInputStream fis =  new FileInputStream(fileRef)) {								   
 				    int numRead;
 	
-				    do {
-				       numRead = fis.read(readBytes);
-				       if (numRead > 0) {
-				    	   messageDigest.update(readBytes, 0, numRead);
-				       }
-				    } while (numRead != -1);	      
+				    while(0 < (numRead = fis.read(readBytes))) {				       
+				    	messageDigest.update(readBytes, 0, numRead);
+				    }				       	      
 				}
 				
 				String md5Digest = Base64.getEncoder().encodeToString(messageDigest.digest());
@@ -378,14 +369,37 @@ public class CloudBackupClient  implements CommandLineRunner {
 				
 				try(FileInputStream fis = new FileInputStream(fileRef)) {
 					
-					idx = 0;
+					fileByteEndIndex = 0;					
 					currentPacket = 0;
 					
-					while(idx < fileRef.length()) {
+					if(BackupFileTrackerStatus.Processing == fileTracker.getTrackerStatus() &&
+					   0 < fileTracker.getLastByteSent() && 
+					   fileTracker.equalsFile(fileRef)) {
+						logger.info(String.format("Tracker %s found in processing state, attempting to restart by skipping bytes", fileTracker.getBackupFileTrackerID().toString()));
+						
+						long skippedBytes = fis.skip(fileTracker.getLastByteSent());
+						
+						if( skippedBytes == fileTracker.getLastByteSent() ) {
+							//NOTE: This assumes a consistent packet size between runs
+							currentPacket = (int)(fileTracker.getLastByteSent()/packetSize);
+							logger.info(String.format("Byte skip successful for tracker: %s, restarting processing at packet %d", 
+											fileTracker.getBackupFileTrackerID().toString(), currentPacket));
+						} else {
+							logger.error(String.format("Invalid skip bytes for file: %s, marking tracker for retry.", fileTracker.getFileFullPath()));
+							
+							fileTracker.setTrackerStatus(BackupFileTrackerStatus.Retry);
+							fileTracker.setLastStatusChange(new Date());
+							this.sendTrackerUpdate(fileTracker);
+							
+							return;
+						}
+					}
+					
+					while(fileByteEndIndex < fileRef.length()) {
 						
 						byteCount = fis.read(readBytes);
 						
-						idx += byteCount;
+						fileByteEndIndex += byteCount;
 						
 						if(readBytes.length == byteCount) {
 							fileBytes = readBytes;
@@ -398,21 +412,22 @@ public class CloudBackupClient  implements CommandLineRunner {
 						bais = new ByteArrayInputStream(fileBytes);
 						baos = new ByteArrayOutputStream();
 																
-						FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), idx-byteCount, idx));
+						FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), fileByteEndIndex-byteCount, fileByteEndIndex));
 						
 						bais.close();
 						baos.close();
 						
-						logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), idx));
+						logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), fileByteEndIndex));
 				        
 				        //Convert bytes to base64
-						logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), idx));
+						logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), fileByteEndIndex));
 						
 						String encodedBytes = Base64.getEncoder().encodeToString(baos.toByteArray());
 						currentPacket += 1;
 						
 						dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
 																   encodedBytes.length(),
+																   fileByteEndIndex,
 																   currentPacket,
 																   totalPackets,															   															   
 																   encodedBytes,
@@ -433,10 +448,18 @@ public class CloudBackupClient  implements CommandLineRunner {
 							
 							this.globalPacketSendCount.set(0);
 						}
+						
+						//TODO Remove
+						if(fileRef.getName().equals("mnist.pkl.gz") && currentPacket == 20) {
+							throw new Exception("Test stop");
+						}
 					}				
 				
 				}
 			}		
+		} catch( Exception ex ) {
+			logger.error(String.format("Exeption processing packets for file tracker: %s, file path: %s", 
+							fileTracker.getBackupFileTrackerID(), fileTracker.getFileFullPath()), ex);
 		} finally {
 			this.currentProcessingCount.decrementAndGet();
 		}

@@ -26,6 +26,9 @@
     </encoder>
   </appender> 
   
+  <logger name="com.nearskysolutions.cloudbackup.util" level="ERROR" />
+  <logger name="com.nearskysolutions.cloudbackup.services" level="ERROR" />
+  
   <root level="info">
     <appender-ref ref="FILE" />
   </root>

@@ -139,7 +139,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						
 						throw new Exception(String.format("Invalid state for packet number out of order and can't process for packetID: %s, tracker ID: %s", 
 															packetID.toString(), trackerID.toString()));						
-					} else	if(false == tmpFile.exists() ) {						
+					} else if(false == tmpFile.exists() ) {						
 						retryTracker = true;
 					
 						throw new Exception(String.format("Packet number out of order and can't process for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));
@@ -153,9 +153,13 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					
 						logger.info(String.format("Starting new stored file for tracker ID: %s, client ID: %s", trackerID.toString(), clientID.toString()));
 						
-						//Replace final file if it exists and this is the first new packet
+						//Replace final file or temp file if either exist and this is the first new packet
 						if(finalZipFile.exists()) {
 							finalZipFile.delete();
+						}
+						
+						if(tmpFile.exists()) {
+							tmpFile.delete();
 						}
 						
 					} else {
@@ -175,6 +179,12 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				try (FileOutputStream fos = new FileOutputStream(tmpFile, true)) {										
 					FileZipUtils.WriteZipInputToOutput(bais, fos);														
 				}
+				
+				logger.info(String.format("Saving last byte count saved: %d for tracker: %s", 
+											packet.getEndingFileByteCount(), tracker.getBackupFileTrackerID().toString()));
+				tracker.setLastByteSent(packet.getEndingFileByteCount());
+				this.dataSvc.updateBackupFileTracker(tracker);
+								
 				
 				if( packet.getPacketsTotal() != packet.getPacketNumber() ) {	
 					logger.info(String.format("Completed write, leaving temp file for packet %s, last packet number: %d of %d", 
@@ -350,8 +360,8 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 											
 			for(BackupFileTracker tracker : trackerList) {
 				
-				logger.info("Restoring tracker %d, file name: %s, from request: %s", 
-							tracker.getBackupFileTrackerID(), tracker.getFileName(), restoreRequest.getRequestID().toString());
+				logger.info(String.format("Restoring tracker %s, file name: %s, from request: %s", 
+											tracker.getBackupFileTrackerID().toString(), tracker.getFileFullPath(), restoreRequest.getRequestID().toString()));
 				
 				//Check for external change of request status
 				BackupRestoreRequest latestRestoreRequest = restoreSvc.getRestoreRequestByRequestID(restoreRequest.getRequestID());

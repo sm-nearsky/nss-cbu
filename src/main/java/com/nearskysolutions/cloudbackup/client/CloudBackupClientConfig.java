@@ -20,7 +20,6 @@ import org.springframework.stereotype.Component;
 @PropertySource({"classpath:application-client-${env}.properties"})
 public class CloudBackupClientConfig {
 		
-	@Value( "${com.nearskysolutions.cloudbackup.general.filePacketSize}" )
 	private int filePacketSize;
 	private List<String> clientDirectoryIncludes;
 	private UUID clientId;

@@ -48,18 +48,18 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 			BackupFileTracker fileTracker = fileSvc.getTrackerByBackupFileTrackerID(trackerID);
 			
 			if( fileTracker == null ) {
-				throw new Exception(String.format("Couldn't find tracker for ID: %d", trackerID));
+				throw new Exception(String.format("Couldn't find tracker for ID: %s", trackerID.toString()));
 			}
 			
 			if( false == fileTracker.getClientID().equals(clientID) ) {
-				throw new Exception(String.format("Client ID mismatch for tracker ID: %d", trackerID));
+				throw new Exception(String.format("Client ID mismatch for tracker ID: %s", trackerID.toString()));
 			}
 			
 			if( BackupFileTrackerStatus.Stored != fileTracker.getTrackerStatus() ) {
-				throw new Exception(String.format("Invalid status for tracker ID: %s, Status must be Stored", trackerID));
+				throw new Exception(String.format("Invalid status for tracker ID: %s, Status must be Stored", trackerID.toString()));
 			}
 			
-			logger.info(String.format("Adding file tracker with ID: %s for backup request with clientID: %s", trackerID, clientID));
+			logger.info(String.format("Adding file tracker with ID: %s for backup request with clientID: %s", trackerID.toString(), clientID.toString()));
 		}
 		
 		restoreRequest.setCurrentStatus(RestoreStatus.Pending);
@@ -71,7 +71,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 			retVal = requestRepo.save(restoreRequest);			
 			
 		} catch(Exception ex) {
-			logger.error(String.format("Couldn't save or queue BackupRestoreRequest", restoreRequest.toString()), ex);			
+			logger.error(String.format("Couldn't save or queue BackupRestoreRequest: %s", restoreRequest.getRequestID().toString()), ex);			
 		}
 		
 		logger.trace("Completed BackupRestoreRequestServiceImpl.addRestoreRequest(BackupRestoreRequest restoreRequest)");
