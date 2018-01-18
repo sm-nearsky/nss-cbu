@@ -222,7 +222,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private void processFileList(File trackerFile, List<String> trackerFilePathList) throws Exception {
 
-		logger.info(String.format("Processing file: %s fir client %s", trackerFile.getAbsolutePath(), this.cbcConfig.getClientId().toString()));
+		logger.info(String.format("Processing file: %s for client %s", trackerFile.getAbsolutePath(), this.cbcConfig.getClientId().toString()));
 			
 		
 		if(trackerFilePathList.contains(trackerFile.getAbsolutePath())) {

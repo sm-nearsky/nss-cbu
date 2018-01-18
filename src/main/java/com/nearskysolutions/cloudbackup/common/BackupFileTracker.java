@@ -317,19 +317,23 @@ public class BackupFileTracker {
 			//TODO make this configurable
 			DosFileAttributes  attr = (DosFileAttributes)Files.readAttributes(Paths.get(compareFile.getAbsolutePath()), DosFileAttributes .class); 
 
-			filesEqual = 
-					(attr.creationTime().toMillis() == this.getFileAttributes().getFileCreatedDateTimeMillis()) &&
-					(attr.lastModifiedTime().toMillis() == this.getFileAttributes().getFileModifiedDateTimeMillis()) &&
-					(attr.lastAccessTime().toMillis() == this.getFileAttributes().getFileAccessDateTimeMillis()) &&					
-					attr.size() == this.getFileAttributes().getFileSize() &&
-					attr.isRegularFile() == this.getFileAttributes().isRegularFile() &&
-					attr.isDirectory() == this.getFileAttributes().isDirectory() &&
-					attr.isSymbolicLink() == this.getFileAttributes().isSymbolicLink() &&
-					attr.isOther() == this.getFileAttributes().isOther() &&
-					attr.isReadOnly() == this.getFileAttributes().isReadOnly() &&
-					attr.isHidden() == this.getFileAttributes().isHidden() &&
-					attr.isSystem() == this.getFileAttributes().isSystem() &&
-					attr.isArchive() == this.getFileAttributes().isArchive();
+			//File size can be read incorrectly for directories
+			filesEqual = (this.isDirectory() ? filesEqual : attr.size() == this.getFileAttributes().getFileSize());
+			
+			if(true == filesEqual) {
+				filesEqual = 
+						(attr.creationTime().toMillis() == this.getFileAttributes().getFileCreatedDateTimeMillis()) &&
+						(attr.lastModifiedTime().toMillis() == this.getFileAttributes().getFileModifiedDateTimeMillis()) &&
+						(attr.lastAccessTime().toMillis() == this.getFileAttributes().getFileAccessDateTimeMillis()) &&
+						attr.isRegularFile() == this.getFileAttributes().isRegularFile() &&
+						attr.isDirectory() == this.getFileAttributes().isDirectory() &&
+						attr.isSymbolicLink() == this.getFileAttributes().isSymbolicLink() &&
+						attr.isOther() == this.getFileAttributes().isOther() &&
+						attr.isReadOnly() == this.getFileAttributes().isReadOnly() &&
+						attr.isHidden() == this.getFileAttributes().isHidden() &&
+						attr.isSystem() == this.getFileAttributes().isSystem() &&
+						attr.isArchive() == this.getFileAttributes().isArchive();
+			}
 		
 			if( filesEqual )
 			{
