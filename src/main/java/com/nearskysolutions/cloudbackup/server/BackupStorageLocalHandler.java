@@ -194,36 +194,43 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 								
 					logger.info(String.format("Completed write for last packet of tracker: %s, comparing checksum digest", trackerID.toString())); 
 					
-					//Create digest for MD5 hash					
-					MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
-					
-					try(FileInputStream fis =  new FileInputStream(tmpFile)) {
-						byte[] mdBytes = new byte[4096];
-					   
-					    int numRead;
-
-					    do {
-					       numRead = fis.read(mdBytes);
-					       if (numRead > 0) {
-					    	   messageDigest.update(mdBytes, 0, numRead);
-					       }
-					    } while (numRead != -1);	      
-					}
-					
-					String md5Encoded = Base64.getEncoder().encodeToString(messageDigest.digest());
-					
-					if( false == md5Encoded.equals(packet.getFileChecksumDigest()) ) {						
-						logger.info(String.format("Checksum mis-match for tracker: %s, marking tracker for retry", trackerID.toString()));
-						
-						retryTracker = true;
-						
-						throw new Exception("Unable to create zip file due to checksum error");
-					} else {						
-						logger.info(String.format("Checksum match for tracker: %s, creating final storage file", trackerID.toString()));
+					if( tmpFile.length() == 0 ) {
+						logger.info(String.format("Creating zero length storage file for tracker: %s", trackerID.toString()));
 						
 						FileZipUtils.CreateZipFileOutput(tmpFile, finalZipFile);
 						tracker.setTrackerStatus(BackupFileTrackerStatus.Stored);
-					}						
+					} else {
+						//Create digest for MD5 hash					
+						MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
+						
+						try(FileInputStream fis =  new FileInputStream(tmpFile)) {
+							byte[] mdBytes = new byte[4096];
+						   
+						    int numRead;
+	
+						    do {
+						       numRead = fis.read(mdBytes);
+						       if (numRead > 0) {
+						    	   messageDigest.update(mdBytes, 0, numRead);
+						       }
+						    } while (numRead != -1);	      
+						}
+						
+						String md5Encoded = Base64.getEncoder().encodeToString(messageDigest.digest());
+						
+						if( false == md5Encoded.equals(packet.getFileChecksumDigest()) ) {						
+							logger.info(String.format("Checksum mis-match for tracker: %s, marking tracker for retry", trackerID.toString()));
+							
+							retryTracker = true;
+							
+							throw new Exception("Unable to create zip file due to checksum error");
+						} else {						
+							logger.info(String.format("Checksum match for tracker: %s, creating final storage file", trackerID.toString()));
+							
+							FileZipUtils.CreateZipFileOutput(tmpFile, finalZipFile);
+							tracker.setTrackerStatus(BackupFileTrackerStatus.Stored);
+						}	
+					}
 				}					
 				
 			}				
