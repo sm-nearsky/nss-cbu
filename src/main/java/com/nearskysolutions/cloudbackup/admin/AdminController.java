@@ -40,9 +40,8 @@ public class AdminController {
 	@Autowired 
 	private BackupFileDataService backupDataSvc;
 			
-	@Autowired
-	@Qualifier("ClientUpdateHandlerQueue")
-	ClientUpdateHandlerQueue clientUpdateHandlerQueue;
+	@Autowired	
+	private ClientUpdateHandlerQueue clientUpdateHandlerQueue;
 	
 	Logger logger = LoggerFactory.getLogger(AdminController.class);
 	

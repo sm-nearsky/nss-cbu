@@ -23,8 +23,8 @@
     </encoder>
   </appender> 
   
-  <logger name="com.nearskysolutions.cloudbackup.util" level="ERROR" />
-  <logger name="com.nearskysolutions.cloudbackup.services" level="ERROR" />
+  <logger name="com.nearskysolutions.cloudbackup.util" level="error" />
+  <logger name="com.nearskysolutions.cloudbackup.services" level="error" />
   
   <root level="info">
     <appender-ref ref="STDOUT" />

@@ -1,7 +1,10 @@
 package com.nearskysolutions.cloudbackup.queue;
 
+import java.io.UnsupportedEncodingException;
+
 import javax.jms.ConnectionFactory;
 
+import org.apache.qpid.jms.JmsConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +14,8 @@ import org.springframework.jms.UncategorizedJmsException;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
+import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
-import org.springframework.jms.support.converter.MessageConverter;
-import org.springframework.jms.support.converter.MessageType;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
@@ -27,13 +28,11 @@ public class JmsHandler {
 	
 	@Autowired
 	private JmsTemplate jmsTemplate;
-		
 			
 	public JmsHandler() {
 		
 	}
-	
-	
+		
 	public void sendJsonJmsMessage(String destination, Object obj, boolean bUseRetry) throws Exception {		
 		if( null == destination ) {
 			throw new Exception("destination argument can't be null");
@@ -58,7 +57,7 @@ public class JmsHandler {
 				
 			} catch (UncategorizedJmsException jmsEx) {
 				if( -1 != jmsEx.getMessage().indexOf("Address already in use") ) {
-					//Back off to so reconnect can be attemted
+					//Back off to so reconnect can be attempted
 					logger.info(String.format("Connection failed while trying to send message of type %s to destination=%s, backing off for retry", 
 												obj.getClass().getName(), destination));
 					
@@ -71,22 +70,35 @@ public class JmsHandler {
 		} while(--numRetries >= 0);
 	}
 	
-	@Bean
-    public JmsListenerContainerFactory<?> jmsFactory(ConnectionFactory connectionFactory,
-                                                    DefaultJmsListenerContainerFactoryConfigurer configurer) {
-        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
-              
-        // This provides all boot's default to this factory, including the message converter
-        configurer.configure(factory, connectionFactory);
-
-        return factory;
+    @Bean
+    public ConnectionFactory jmsConnectionFactory(JmsQpidConfiguration qpidConfig) throws UnsupportedEncodingException {
+        JmsConnectionFactory jmsConnectionFactory = new JmsConnectionFactory(qpidConfig.getUrlString());
+        jmsConnectionFactory.setUsername(qpidConfig.getServiceUsername());
+        jmsConnectionFactory.setPassword(qpidConfig.getServicePassword());
+        jmsConnectionFactory.setClientID(qpidConfig.getClientId());
+        jmsConnectionFactory.setReceiveLocalOnly(true);
+        return new CachingConnectionFactory(jmsConnectionFactory);
     }
     
-    @Bean // Serialize message content to json using TextMessage
-    public MessageConverter jacksonJmsMessageConverter() {
-        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
-        converter.setTargetType(MessageType.TEXT);
-        converter.setTypeIdPropertyName("_type");
-        return converter;
+    @Bean
+    public JmsTemplate jmsTemplate(ConnectionFactory jmsConnectionFactory) {
+        JmsTemplate returnValue = new JmsTemplate();
+        returnValue.setConnectionFactory(jmsConnectionFactory);
+        return returnValue;
     }
+    
+    @Bean
+    public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
+        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();
+        returnValue.setConnectionFactory(connectionFactory);
+        return returnValue;
+    }
+    
+//    @Bean
+//    public JmsListenerContainerFactory topicJmsListenerContainerFactory(ConnectionFactory connectionFactory) {
+//        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();
+//        returnValue.setConnectionFactory(connectionFactory);
+//        returnValue.setSubscriptionDurable(Boolean.TRUE);
+//        return returnValue;
+//    }    
 }

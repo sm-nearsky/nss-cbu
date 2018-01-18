@@ -12,7 +12,6 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
@@ -286,7 +285,6 @@ public class BackupFileTracker {
 		return fileFullPath;
 	}
 
-
 	public Long getLastByteSent() {
 		return lastByteSent;
 	}
@@ -294,14 +292,17 @@ public class BackupFileTracker {
 	public void setLastByteSent(Long lastByteSent) {
 		this.lastByteSent = lastByteSent;
 	}
-
+	
 	@Override
 	public String toString() {
+		
 		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
-								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, trackerStatus=%s, lastError=%s, " +
-								"lastByteSent=%d, lastStatusChange=%s, isFileDeleted=%s, fileAttributes=%s]",
+								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, lastByteSent=%d,"+
+								"trackerStatus=%s, lastError=%s, lastStatusChange=%s, isFileDeleted=%s, fileAttributes=%s]",
 								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
-								fileName, fileFullPath, sourceDirectory, lastByteSent, trackerStatus.toString(), lastError, lastStatusChange, isFileDeleted, fileAttributes);
+								fileName, fileFullPath, sourceDirectory, lastByteSent, trackerStatus.toString(), lastError, 
+								lastStatusChange, isFileDeleted, fileAttributes);
+		
 	}
 
 	public boolean equalsFile(File compareFile) throws IOException {

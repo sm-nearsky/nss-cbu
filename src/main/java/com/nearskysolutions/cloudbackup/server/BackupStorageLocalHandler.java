@@ -143,12 +143,13 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						retryTracker = true;
 					
 						throw new Exception(String.format("Packet number out of order and can't process for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));
-					}
+					} 
 					
 				} else {				
 				
 					tracker.setTrackerStatus(BackupFileTrackerStatus.Processing);
-				
+					tracker.setLastError("");
+					
 					if(fileDir.exists())  {					
 					
 						logger.info(String.format("Starting new stored file for tracker ID: %s, client ID: %s", trackerID.toString(), clientID.toString()));
@@ -530,7 +531,8 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					}
 					
 					if( fileFound == false ) { 
-						throw new Exception(String.format("Missing file for tracker ID: %s", tracker.getBackupFileTrackerID().toString()));
+						throw new Exception(String.format("Missing file for tracker ID: %s, file path: %s", 
+															tracker.getBackupFileTrackerID().toString(), tracker.getFileFullPath()));
 					}
 					
 					processComplete = true;

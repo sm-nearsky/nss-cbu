@@ -45,17 +45,16 @@ public class CloudBackupClient  implements CommandLineRunner {
 	@Autowired
 	private CloudBackupClientConfig cbcConfig;
 	
-	@Autowired
-	@Qualifier("ClientUpdateHandlerQueue")
-	ClientUpdateHandlerQueue clientUpdateHandlerQueue;
+	@Autowired	
+	private ClientUpdateHandlerQueue clientUpdateHandlerQueue;
 	
 	private RestTemplate restTemplate;
 	
 	private ThreadPoolExecutor packetSendThreadPool;	
 		
 	private AtomicInteger currentProcessingCount = new AtomicInteger(0);
-	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
-	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
+//	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
+//	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
 	
 	public void run(String... args) {
 	
@@ -261,12 +260,13 @@ public class CloudBackupClient  implements CommandLineRunner {
 		
 		this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
 		
-		if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
-			logger.info("Backing off tracker send after sending max messages");
-			Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-			
-			this.globalTrackerSendCount.set(0);
-		}
+		//TODO Remove
+//		if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
+//			logger.info("Backing off tracker send after sending max messages");
+//			Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
+//			
+//			this.globalTrackerSendCount.set(0);
+//		}
 	}
 	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
@@ -377,9 +377,9 @@ public class CloudBackupClient  implements CommandLineRunner {
 					   fileTracker.equalsFile(fileRef)) {
 						logger.info(String.format("Tracker %s found in processing state, attempting to restart by skipping bytes", fileTracker.getBackupFileTrackerID().toString()));
 						
-						long skippedBytes = fis.skip(fileTracker.getLastByteSent());
+						fileByteEndIndex = fis.skip(fileTracker.getLastByteSent());
 						
-						if( skippedBytes == fileTracker.getLastByteSent() ) {
+						if( fileByteEndIndex == fileTracker.getLastByteSent() ) {
 							//NOTE: This assumes a consistent packet size between runs
 							currentPacket = (int)(fileTracker.getLastByteSent()/packetSize);
 							logger.info(String.format("Byte skip successful for tracker: %s, restarting processing at packet %d", 
@@ -440,21 +440,16 @@ public class CloudBackupClient  implements CommandLineRunner {
 						
 						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
 						
+						//TODO Remove
 						//Sleep after configured packet max to let queues catch up
 						//and garbage collection occur
-						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
-							logger.info("Backing off packet send after sending max messages");
-							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-							
-							this.globalPacketSendCount.set(0);
-						}
-						
-						//TODO Remove
-						if(fileRef.getName().equals("mnist.pkl.gz") && currentPacket == 20) {
-							throw new Exception("Test stop");
-						}
-					}				
-				
+//						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
+//							logger.info("Backing off packet send after sending max messages");
+//							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
+//							
+//							this.globalPacketSendCount.set(0);
+//						}					
+					}
 				}
 			}		
 		} catch( Exception ex ) {

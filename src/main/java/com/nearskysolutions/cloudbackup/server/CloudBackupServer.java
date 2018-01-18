@@ -92,7 +92,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 		return String.format("%s%s", MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX, trackerFileID.substring(0, 2));
 	}
 	
-	@JmsListener(destination = "com.nearskysolutions.cloudbackup.queue.nssCbuClientUpdates", containerFactory = "jmsFactory")
+	@JmsListener(destination = "nssCbuClientUpdates")
     public void receiveMessage(String message) throws Exception {
 
 		logger.info("receiveMessage in thread: " + Thread.currentThread().getName());

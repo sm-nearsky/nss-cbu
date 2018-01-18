@@ -227,9 +227,14 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		
 		BackupFileTracker retVal = trackerRepo.findOne(trackerID);
 					
-		logger.info(String.format("Query found backup file tracker with ID: %s", trackerID.toString()));
+		if( null == retVal ) {
+			logger.info(String.format("No backup file tracker with ID: %s", trackerID.toString()));
+		} else {
+			logger.info(String.format("Found backup file tracker with ID: %s", trackerID.toString()));
+		}
 		
-		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(): file tracker found: %s", retVal));
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(): file tracker found: %s",
+									((retVal != null) ? retVal.toString() : "null")));
 		
 		return retVal;
 	}
