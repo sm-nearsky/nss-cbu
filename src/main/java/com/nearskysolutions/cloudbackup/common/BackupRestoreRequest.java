@@ -21,12 +21,12 @@ import org.hibernate.annotations.GenericGenerator;
 public class BackupRestoreRequest {
 	
 	@Id
-	@GeneratedValue(generator = "uuid2")
-	@GenericGenerator(name = "uuid2", strategy = "uuid2")
-	@Column(name="request_id", columnDefinition = "BINARY(16)")		
-	private UUID requestID;
+	@GenericGenerator(name = "generator", strategy = "uuid2")
+	@GeneratedValue(generator = "generator")	
+	@Column(name="request_id", columnDefinition = "uniqueidentifier")		
+	private String requestID;
 		
-	@Column(name="client_id", columnDefinition = "BINARY(16)")
+	@Column(name="client_id", columnDefinition = "uniqueidentifier")
 	private UUID clientID;
 	
 	@Column(name="submitter_id")
@@ -115,7 +115,7 @@ public class BackupRestoreRequest {
 	}
 	
 	public UUID getRequestID() {
-		return requestID;
+		return (null != this.requestID ? UUID.fromString(this.requestID) : null);
 	}
 
 	public UUID getClientID() {

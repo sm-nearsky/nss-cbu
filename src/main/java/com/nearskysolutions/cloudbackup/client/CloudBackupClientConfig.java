@@ -34,6 +34,8 @@ public class CloudBackupClientConfig {
 	private int packetSendBeforePause;
 	private int trackerSendBeforePause;
 	private int messageSendPauseSeconds;
+	private int maxProcessingMinutes;
+	private long fileSizeLimitBytes;
 	
 	public int getFilePacketSize() {
 		return filePacketSize;
@@ -145,6 +147,22 @@ public class CloudBackupClientConfig {
 
 	public void setMessageSendPauseSeconds(int packetSendPauseSeconds) {
 		this.messageSendPauseSeconds = packetSendPauseSeconds;
+	}
+	
+	public int getMaxProcessingMinutes() {
+		return maxProcessingMinutes;
+	}
+
+	public void setMaxProcessingMinutes(int maxProcessingMinutes) {
+		this.maxProcessingMinutes = maxProcessingMinutes;
+	}
+	
+	public long getFileSizeLimitBytes() {
+		return fileSizeLimitBytes;
+	}
+
+	public void setFileSizeLimitBytes(long fileSizeLimitBytes) {
+		this.fileSizeLimitBytes = fileSizeLimitBytes;
 	}
 
 }

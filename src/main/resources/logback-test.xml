@@ -24,7 +24,7 @@
   </appender> 
   
   <logger name="com.nearskysolutions.cloudbackup.util" level="error" />
-  <logger name="com.nearskysolutions.cloudbackup.services" level="error" />
+  <logger name="com.nearskysolutions.cloudbackup.services" level="info" />
   
   <root level="info">
     <appender-ref ref="STDOUT" />

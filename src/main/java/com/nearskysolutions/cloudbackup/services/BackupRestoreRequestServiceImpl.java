@@ -45,7 +45,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 		logger.info(String.format("Storing backup request for clientID: %s with notify type: %s", clientID, restoreRequest.getNotifyType()));
 		
 		for(UUID trackerID : restoreRequest.getRequestedFileTrackerIDs()) {
-			BackupFileTracker fileTracker = fileSvc.getTrackerByBackupFileTrackerID(trackerID);
+			BackupFileTracker fileTracker = fileSvc.getTrackerByBackupFileTrackerID(trackerID, restoreRequest.getClientID());
 			
 			if( fileTracker == null ) {
 				throw new Exception(String.format("Couldn't find tracker for ID: %s", trackerID.toString()));
@@ -127,7 +127,7 @@ public class BackupRestoreRequestServiceImpl implements BackupRestoreRequestServ
 		logger.info(String.format("Query for BackupRestoreRequest with request ID = %s", requestID));
 		
 		BackupRestoreRequest retVal;
-		List<BackupRestoreRequest> requestList = requestRepo.findByRequestID(requestID);
+		List<BackupRestoreRequest> requestList = requestRepo.findBySingleRequestID(requestID.toString());
 		
 		if( 0 == requestList.size() ) {
 			retVal = null;

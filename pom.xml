@@ -4,7 +4,7 @@
 
   <groupId>com.nearskysolutions.cloudbackup</groupId>
   <artifactId>NssCloudBackupSystem</artifactId>
-  <version>1.1.1</version>
+  <version>1.2.0</version>
   <packaging>jar</packaging>
 
   <name>NssCloudBackupSystem</name>
@@ -108,10 +108,15 @@
         <scope>runtime</scope>        
     </dependency>
     <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
-	<dependency>
+	<!--  <dependency>
 	    <groupId>mysql</groupId>
 	    <artifactId>mysql-connector-java</artifactId>	    
-	</dependency>    
+	</dependency>
+	-->
+	<dependency>
+	    <groupId>com.microsoft.sqlserver</groupId>
+	    <artifactId>mssql-jdbc</artifactId>    
+	</dependency>   
 	<dependency>
 		<groupId>junit</groupId>
 		<artifactId>junit-dep</artifactId>

@@ -15,7 +15,7 @@ public interface BackupFileDataService {
 	
 	void deleteBackupFileTracker(BackupFileTracker fileTracker) throws Exception;
 
-	BackupFileTracker getTrackerByBackupFileTrackerID(UUID trackerID);
+	BackupFileTracker getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID);
 	
 	List<BackupFileTracker> getAllBackupTrackersForClient(UUID clientID);
 	

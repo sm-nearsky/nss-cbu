@@ -5,12 +5,17 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 
 public interface BackupRestoreRequestRepository extends CrudRepository<BackupRestoreRequest, UUID> {
 
-	List<BackupRestoreRequest> findByRequestID(UUID requestID);	
+	@Query("SELECT r FROM BackupRestoreRequest r " 
+			+ "WHERE "
+			+ "r.requestID = :requestID"			
+			)
+	List<BackupRestoreRequest> findBySingleRequestID(@Param("requestID") String requestID);	
 	
 	List<BackupRestoreRequest> findAllByOrderBySubmittedDateTimeAsc();
 	

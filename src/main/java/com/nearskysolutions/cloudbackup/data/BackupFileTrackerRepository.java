@@ -9,17 +9,37 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
 
+import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 
 public interface BackupFileTrackerRepository extends PagingAndSortingRepository<BackupFileTracker, UUID> {
 	
-	List<BackupFileTracker> findByClientIDOrderByFileFullPath(UUID clientID);
+	@Query("SELECT t FROM BackupFileTracker t " 
+			+ "WHERE "
+			+ "t.backupFileTrackerID = :trackerID "			
+			+ "AND t.clientID = :clientID "
+			)
+	List<BackupFileTracker> findBySingleTrackerID(@Param("trackerID") String trackerID, @Param("clientID") UUID clientID);
 	
-	Page<BackupFileTracker> findByClientIDOrderByFileFullPath(UUID clientID, Pageable pageable);
+	List<BackupFileTracker> findByClientIDOrderByFileFullPath(@Param("clientID") UUID clientID);
 	
-	List<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(UUID clientID);
+	Page<BackupFileTracker> findByClientIDOrderByFileFullPath(@Param("clientID") UUID clientID, Pageable pageable);
 	
-	Page<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(UUID clientID, Pageable pageable);
+	@Query("SELECT t FROM BackupFileTracker t " 
+			+ "WHERE "
+			+ "t.clientID = :clientID "
+			+ "AND t.trackerStatus != 3 "
+			+ "ORDER BY t.fileFullPath"
+			)
+	List<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID);
+	
+	@Query("SELECT t FROM BackupFileTracker t " 
+			+ "WHERE "
+			+ "t.clientID = :clientID "
+			+ "AND t.trackerStatus != 3 "
+			+ "ORDER BY t.fileFullPath"
+			)
+	Page<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID, Pageable pageable);
 	
 	@Query("SELECT t FROM BackupFileTracker t " 
 			+ "WHERE "

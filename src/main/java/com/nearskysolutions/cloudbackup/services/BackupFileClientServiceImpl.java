@@ -60,7 +60,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 			logger.error("Null BackupFileClient passed as argument to BackupFileClientServiceImpl.updateBackupClient");
 			
 			throw new NullPointerException("Backup client UUID can't be null");
-		} else if( false == clientRepo.exists(backupClient.getClientID())) {
+		} else if( null == this.getBackupClientByClientID(backupClient.getClientID())) {
 			logger.error("Unknown client ID (%s) passed to to BackupFileClientServiceImpl.updateBackupClient", backupClient.getClientID());
 			
 			throw new Exception("Backup client ID not found");
@@ -88,7 +88,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 			throw new NullPointerException("Client ID can't be null");
 		}
 		
-		if( false == clientRepo.exists(clientID)) {
+		if( null == this.getBackupClientByClientID(clientID)) {
 			logger.error("Unknown client ID (%s) passed to to BackupFileClientServiceImpl.deleteBackupClient", clientID.toString());
 			
 			throw new Exception("Backup client ID not found");
@@ -115,18 +115,10 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 		}
 		
 		logger.info(String.format("Query for BackupFileClient with client ID = %s", clientID));
+
+		List<BackupFileClient> lstClients = clientRepo.findBySingleClientID(clientID.toString());
 		
-		BackupFileClient retVal;
-		List<BackupFileClient> clientList = clientRepo.findByClientID(clientID);
-		
-		if( 0 == clientList.size() ) {
-			retVal = null;
-		} else if( 1 == clientList.size() ) {
-			retVal = clientList.get(0);
-		} else { //clientList.size() > 1
-			throw new Exception(String.format("Invalid count returned for clientID=%s, expected: 1, received: %d", 
-												clientID, clientList.size()));
-		}
+		BackupFileClient retVal = lstClients.size() == 1 ? lstClients.get(0) : null;
 		
 		logger.info(String.format("Backup client %sfound for ID = %s",((retVal == null) ? "not " : ""), clientID));
 		

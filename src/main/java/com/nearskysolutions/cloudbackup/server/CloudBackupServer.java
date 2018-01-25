@@ -23,6 +23,7 @@ import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.queue.ClientUpdateMessage;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
@@ -93,7 +94,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 	}
 	
 	@JmsListener(destination = "nssCbuClientUpdates")
-    public void receiveMessage(String message) throws Exception {
+    public void receiveMessage(String message) {
 
 		logger.info("receiveMessage in thread: " + Thread.currentThread().getName());
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
@@ -103,52 +104,56 @@ public class CloudBackupServer  implements CommandLineRunner {
 		logger.info(String.format("Cloud backup message received from queue, message ID: %s and message type: %s",
 									updateMessage.getMessageID().toString(), updateMessage.getMessageType().toString()));
 		
-		switch(updateMessage.getMessageType()) {
-			case FileTracker:
-				BackupFileTracker tracker = (BackupFileTracker)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileTracker.class);        	
-	        	logger.info(String.format("Processing add or update for backup file tracker ID: %s", tracker.getBackupFileTrackerID()));
-	        	
-	        	//Tracker update processing can be performed in parallel
-	        	this.threadBank.get(TRACKER_UPDATE_THREAD_NAME).submit(() -> {
-	        		this.addOrUpdateFileTracker(tracker);
-				    return null;
-				});
-	        	
-	        break;	
-			case FilePacket:        	
-	        	BackupFileDataPacket packet = (BackupFileDataPacket)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileDataPacket.class);        	
-	        	logger.info(String.format("Processing backup file packet with ID: %s", packet.getDataPacketID().toString()));
-	        	
-	        	if( 1 == packet.getPacketsTotal() ) {
-	        		//Files that only require one packet can be handled in parallel
-	        		this.threadBank.get(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME).submit(() -> {
-	        			this.backupStorageHandler.processBackupPacket(packet);
+		try {
+			switch(updateMessage.getMessageType()) {
+				case FileTracker:
+					BackupFileTracker tracker = (BackupFileTracker)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileTracker.class);        	
+		        	logger.info(String.format("Processing add or update for backup file tracker ID: %s", tracker.getBackupFileTrackerID()));
+		        	
+		        	//Tracker update processing can be performed in parallel
+		        	this.threadBank.get(TRACKER_UPDATE_THREAD_NAME).submit(() -> {
+		        		this.addOrUpdateFileTracker(tracker);
 					    return null;
-					});	        		
-	        	} else {
-	        		//If the file requires more than one packet then handle on one
-	        		//of the alphabetical threads so the assembly remains serialized
-	        		this.threadBank.get(getThreadNameForTrackerFileID(packet.getFileTrackerID().toString())).submit(() -> {
-	        			this.backupStorageHandler.processBackupPacket(packet);
+					});
+		        	
+		        break;	
+				case FilePacket:        	
+		        	BackupFileDataPacket packet = (BackupFileDataPacket)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileDataPacket.class);        	
+		        	logger.info(String.format("Processing backup file packet with ID: %s", packet.getDataPacketID().toString()));
+		        	
+		        	if( 1 == packet.getPacketsTotal() ) {
+		        		//Files that only require one packet can be handled in parallel
+		        		this.threadBank.get(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME).submit(() -> {
+		        			this.backupStorageHandler.processBackupPacket(packet);
+						    return null;
+						});	        		
+		        	} else {
+		        		//If the file requires more than one packet then handle on one
+		        		//of the alphabetical threads so the assembly remains serialized
+		        		this.threadBank.get(getThreadNameForTrackerFileID(packet.getFileTrackerID().toString())).submit(() -> {
+		        			this.backupStorageHandler.processBackupPacket(packet);
+						    return null;
+						});	
+		        	}
+		        	
+		        break;
+				case FileRestore:        	
+		        	BackupRestoreRequest restoreRequest = (BackupRestoreRequest)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupRestoreRequest.class);        	
+		        	logger.info(String.format("Processing restore request ID: %s", restoreRequest.getRequestID().toString()));
+		        	
+		        	//Restore requests can be performed in parallel
+		        	this.threadBank.get(RESTORE_REQEUST_THREAD_NAME).submit(() -> {
+		        		this.processRestoreRequest(restoreRequest);
 					    return null;
-					});	
-	        	}
-	        	
-	        break;
-			case FileRestore:        	
-	        	BackupRestoreRequest restoreRequest = (BackupRestoreRequest)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupRestoreRequest.class);        	
-	        	logger.info(String.format("Processing restore request ID: %s", restoreRequest.getRequestID().toString()));
-	        	
-	        	//Restore requests can be performed in parallel
-	        	this.threadBank.get(RESTORE_REQEUST_THREAD_NAME).submit(() -> {
-	        		this.processRestoreRequest(restoreRequest);
-				    return null;
-				});        	
-	        		        	        	        	
-	        	break;        	
-	        default:
-	        	throw new Exception(String.format("Unknown message update type: %s for messsage ID: %s", 
-	        			updateMessage.getMessageType(), updateMessage.getMessageID()));	        	
+					});        	
+		        		        	        	        	
+		        	break;        	
+		        default:
+		        	throw new Exception(String.format("Unknown message update type: %s for messsage ID: %s", 
+		        			updateMessage.getMessageType(), updateMessage.getMessageID()));	        	
+			}
+		} catch(Exception ex) {
+			logger.error("Error in message handling", ex);
 		}
 		
 		logger.trace("Completed CloudBackupServer.receiveMessage(String message)");
@@ -166,7 +171,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 		
 		if( null != newTracker.getBackupFileTrackerID() ) {
 			
-			BackupFileTracker compareTracker = this.fileDataSvc.getTrackerByBackupFileTrackerID(newTracker.getBackupFileTrackerID());
+			BackupFileTracker compareTracker = this.fileDataSvc.getTrackerByBackupFileTrackerID(newTracker.getBackupFileTrackerID(), newTracker.getClientID());
 			
 			if( compareTracker == null ) { 
 				throw new Exception(String.format("No tracker found to update for ID: %d", newTracker.getBackupFileTrackerID()));
@@ -228,16 +233,21 @@ public class CloudBackupServer  implements CommandLineRunner {
 				
 				//Case where deleted file can be re-created before
 				//tracker purge
-				if( trackerFileList.get(0).isFileDeleted() ) {
+				if( BackupFileTrackerStatus.Deleted == trackerFileList.get(0).getTrackerStatus() ) {
 					logger.info(String.format("Pre-purging tracker with ID: %d before new create", newTracker.getBackupFileTrackerID()));
 					//Delete tracker so a new one will be created
-					this.fileDataSvc.deleteBackupFileTracker(trackerFileList.get(0));						
+					this.fileDataSvc.deleteBackupFileTracker(trackerFileList.get(0));
+					
+					newTracker.setBackupFileTrackerID(null);
+					newTracker.setFileNew(true);					
 				} else {
 					//TODO Verify this works
 					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());
+					
+					newTracker.setFileChanged(true);
 				}
 				
-				newTracker.setFileChanged(true);
+				
 				
 			} else { //0 == trackerFileList.size()
 				logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 

@@ -53,14 +53,25 @@ public class CloudBackupClient  implements CommandLineRunner {
 	private ThreadPoolExecutor packetSendThreadPool;	
 		
 	private AtomicInteger currentProcessingCount = new AtomicInteger(0);
-//	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
-//	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
+	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
+	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
+	
+	private Date processingStopTime;
 	
 	public void run(String... args) {
 	
 		try {
 			
 			this.restTemplate = new RestTemplate();
+			
+			Calendar cal = Calendar.getInstance();
+			if( this.cbcConfig.getMaxProcessingMinutes() > 0) {
+				cal.add(Calendar.MINUTE, this.cbcConfig.getMaxProcessingMinutes());
+			} else {
+				cal.add(Calendar.MINUTE, 180);
+			}
+			
+			this.processingStopTime = cal.getTime();
 			
 			packetSendThreadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbcConfig.getPacketSendThreadCount());
 
@@ -169,28 +180,45 @@ public class CloudBackupClient  implements CommandLineRunner {
 									
 								} else if( false == tracker.equalsFile(tracker.getFileReference()) ) {
 									
-									logger.info(String.format("Found changes for file: %s", tracker.getFileReference().getAbsolutePath()));
-									
-									tracker.updateFileAttributes(tracker.getFileReference());						
-									tracker.setFileChanged(true);
-									
-									this.sendTrackerUpdate(tracker);
+									if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
+										logger.info(String.format("Found changes for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
+										
+										tracker.setFileDeleted(true);
 
-									this.sendPacketsForFile(tracker);
-									
+										this.sendPacketsForFile(tracker);
+									} else {									
+										logger.info(String.format("Found changes for file: %s", tracker.getFileReference().getAbsolutePath()));
+										
+										tracker.updateFileAttributes(tracker.getFileReference());						
+										tracker.setFileChanged(true);
+										
+										this.sendTrackerUpdate(tracker);
+	
+										this.sendPacketsForFile(tracker);										
+									}									
 								}	else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
 										     BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ||
 										     BackupFileTrackerStatus.Processing == tracker.getTrackerStatus()
 										    ) {
 									
-										//Send packets for each tracker needing update
-										//Note: this state is set after the server processes tracker updates		
-										logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
+										if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
+											logger.info(String.format("Found restart state for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
 											
-										this.sendPacketsForFile(tracker);									
+											tracker.setFileDeleted(true);
+		
+											this.sendPacketsForFile(tracker);
+										} else {
+											//Send packets for each tracker needing update
+											//Note: this state is set after the server processes tracker updates		
+											logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
+												
+											this.sendPacketsForFile(tracker);
+										}
 								}
 
-								trackerFilePathList.add(tracker.getFileReference().getAbsolutePath());
+								if( BackupFileTrackerStatus.Deleted != tracker.getTrackerStatus() ) {
+									trackerFilePathList.add(tracker.getFileReference().getAbsolutePath());
+								}
 							}
 																						
 							trackerListCurrentPage += 1;
@@ -229,18 +257,22 @@ public class CloudBackupClient  implements CommandLineRunner {
 			//Existing file found in tracker list, no need to take action or keep in the list
 			trackerFilePathList.remove(trackerFile.getAbsolutePath());
 		} else {			
-			logger.info(String.format("Existing file not found, tracker added: %s", trackerFile.getAbsolutePath()));
-			
-			BackupFileTracker newTracker = new BackupFileTracker(this.cbcConfig.getClientId(), 
-																 this.cbcConfig.getRepoType(), 
-																 this.cbcConfig.getRepoLoc(), 
-																 this.cbcConfig.getRepoKey(), 
-																 trackerFile.getAbsolutePath());
-			
-			newTracker.setFileChanged(true);
-			newTracker.setFileNew(true);
-							
-			this.sendTrackerUpdate(newTracker);			
+			if( trackerFile.length() > cbcConfig.getFileSizeLimitBytes() ) {
+				logger.info(String.format("Existing file not found, but over byte limit so not sending: %s", trackerFile.getAbsolutePath()));	
+			} else {
+				logger.info(String.format("Existing file not found, tracker added: %s", trackerFile.getAbsolutePath()));
+				
+				BackupFileTracker newTracker = new BackupFileTracker(this.cbcConfig.getClientId(), 
+																	 this.cbcConfig.getRepoType(), 
+																	 this.cbcConfig.getRepoLoc(), 
+																	 this.cbcConfig.getRepoKey(), 
+																	 trackerFile.getAbsolutePath());
+				
+				newTracker.setFileChanged(true);
+				newTracker.setFileNew(true);
+								
+				this.sendTrackerUpdate(newTracker);
+			}
 		}
 		
 		if( trackerFile.isDirectory() && null != trackerFile.listFiles() ) {						
@@ -250,30 +282,45 @@ public class CloudBackupClient  implements CommandLineRunner {
 		}
 	}
 			
-	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {
+	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
+		//Don't allow more messages if past maximum processing time
+		Date dtNow = new Date();
 		
-		//Note: Don't need process count for tracker updates because these currently
-		//      all happen on the main thread.  Still need throttle to avoid over running 
-		//      the queue.
-		logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
-						tracker.getFileReference().getAbsolutePath(), (null != tracker.getBackupFileTrackerID())));
-		
-		this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
-		
-		//TODO Remove
-//		if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
-//			logger.info("Backing off tracker send after sending max messages");
-//			Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-//			
-//			this.globalTrackerSendCount.set(0);
-//		}
+		if( dtNow.after(this.processingStopTime) ) {
+			logger.info(String.format("Past max run time of %d minutes, discarding update for file tracker ID: %s", 
+										this.cbcConfig.getMaxProcessingMinutes(), 
+										tracker.getBackupFileTrackerID().toString()));			
+		} else {
+			//Note: Don't need process count for tracker updates because these currently
+			//      all happen on the main thread.  Keeping count to allow for threading option.
+			logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
+							tracker.getFileReference().getAbsolutePath(), (null != tracker.getBackupFileTrackerID())));
+			
+			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
+					
+			if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
+				logger.info("Backing off tracker send after sending max messages");
+				Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
+				
+				this.globalTrackerSendCount.set(0);
+			}
+		}
 	}
 	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
-		this.packetSendThreadPool.submit(() -> {
-			this.handleSendPackets(fileTracker);
-		    return null;
-		});	
+		//Don't allow more messages if past maximum processing time
+		Date dtNow = new Date();
+		
+		if( dtNow.after(this.processingStopTime) ) {
+			logger.info(String.format("Past max run time of %d minutes, discarding packet send for file tracker ID: %s", 
+										this.cbcConfig.getMaxProcessingMinutes(), 
+										fileTracker.getBackupFileTrackerID().toString()));			
+		} else {
+			this.packetSendThreadPool.submit(() -> {
+				this.handleSendPackets(fileTracker);
+			    return null;
+			});
+		}
 	}
 	
 	private void handleSendPackets(BackupFileTracker fileTracker) throws Exception {
@@ -284,7 +331,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 		
 		File fileRef = fileTracker.getFileReference();
 		
-		if (false == fileRef.exists() && false == fileTracker.isFileDeleted() ) {
+		if (false == fileRef.exists() && BackupFileTrackerStatus.Deleted != fileTracker.getTrackerStatus() ) {
 			throw new Exception(String.format("File %s doesn't exist", fileRef.getAbsolutePath()));
 		} 
 		
@@ -321,6 +368,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 				logger.info(String.format("Saving directory or zero length file for ref: %s", fileRef.getAbsolutePath()));
 								
 				dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
+														cbcConfig.getClientId(),
 														   0,
 														   0,
 														   1,
@@ -426,6 +474,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 						currentPacket += 1;
 						
 						dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
+																   cbcConfig.getClientId(),
 																   encodedBytes.length(),
 																   fileByteEndIndex,
 																   currentPacket,
@@ -440,15 +489,14 @@ public class CloudBackupClient  implements CommandLineRunner {
 						
 						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
 						
-						//TODO Remove
 						//Sleep after configured packet max to let queues catch up
 						//and garbage collection occur
-//						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
-//							logger.info("Backing off packet send after sending max messages");
-//							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-//							
-//							this.globalPacketSendCount.set(0);
-//						}					
+						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
+							logger.info("Backing off packet send after sending max messages");
+							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
+							
+							this.globalPacketSendCount.set(0);
+						}					
 					}
 				}
 			}		

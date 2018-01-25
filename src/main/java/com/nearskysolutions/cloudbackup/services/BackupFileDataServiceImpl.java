@@ -45,7 +45,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 																fileTracker.getFileName());
 				
 		if( null != otherTrackers && otherTrackers.size() > 0) {
-			if( otherTrackers.size() == 1 && otherTrackers.get(0).isFileDeleted()) {
+			if( otherTrackers.size() == 1 && BackupFileTrackerStatus.Deleted == otherTrackers.get(0).getTrackerStatus()) {
 				//Replacing deleted file
 				trackerRepo.delete(otherTrackers.get(0));
 			} else {			
@@ -77,10 +77,10 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			
 			throw new NullPointerException("Backup tracker ID can't be null");
 		}
-		
-		if( false == trackerRepo.exists(fileTracker.getBackupFileTrackerID())) {
-			logger.error("Unknown BackupFileTrackerID (%d) passed to to BackupFileDataPacketServiceImpl.updateBackupFileTracker", 
-							fileTracker.getBackupFileTrackerID());
+				
+		if( null == this.getTrackerByBackupFileTrackerID(fileTracker.getBackupFileTrackerID(), fileTracker.getClientID())) {
+			logger.error(String.format("Unknown BackupFileTrackerID: %s passed to to BackupFileDataPacketServiceImpl.updateBackupFileTracker", 
+							fileTracker.getBackupFileTrackerID().toString()));
 			
 			throw new Exception("Backup file tracker ID not found");
 		}		
@@ -106,7 +106,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Backup tracker ID can't be null");
 		}
 		
-		if( false == trackerRepo.exists(fileTracker.getBackupFileTrackerID())) {
+		if( null == this.getTrackerByBackupFileTrackerID(fileTracker.getBackupFileTrackerID(), fileTracker.getClientID())) {
 			logger.error("Unknown BackupFileTrackerID (%d) passed to to BackupFileDataPacketServiceImpl.deleteBackupFileTracker", 
 							fileTracker.getBackupFileTrackerID());
 			
@@ -214,8 +214,8 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 
 	@Override
-	public BackupFileTracker getTrackerByBackupFileTrackerID(UUID trackerID) {
-		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(Long trackerID) : %s", trackerID));
+	public BackupFileTracker getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID) {
+		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID) : %s, %s", trackerID, clientID));
 
 		if( trackerID == null ) {
 			logger.error("Null trackerID passed as argument to BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID");
@@ -223,17 +223,22 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Tracker ID can't be null");
 		}
 		
-		logger.info(String.format("Query for BackupFileTracker instance with tracker ID: %s", trackerID.toString()));
+		logger.info(String.format("Query for BackupFileTracker instance with tracker ID: %s and client ID: %s", 
+					trackerID.toString(), clientID.toString()));
 		
-		BackupFileTracker retVal = trackerRepo.findOne(trackerID);
-					
+		List<BackupFileTracker> lstTrackers = trackerRepo.findBySingleTrackerID(trackerID.toString(), clientID);
+				
+		BackupFileTracker retVal = (1 == lstTrackers.size() ? lstTrackers.get(0) : null);
+		
 		if( null == retVal ) {
-			logger.info(String.format("No backup file tracker with ID: %s", trackerID.toString()));
+			logger.info(String.format("No backup file tracker with ID: %s and client ID: %s", 
+							trackerID.toString(), clientID.toString()));
 		} else {
-			logger.info(String.format("Found backup file tracker with ID: %s", trackerID.toString()));
+			logger.info(String.format("Found file tracker with ID: %s and client ID: %s", 
+					trackerID.toString(), clientID.toString()));
 		}
 		
-		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(): file tracker found: %s",
+		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID): file tracker found: %s",
 									((retVal != null) ? retVal.toString() : "null")));
 		
 		return retVal;

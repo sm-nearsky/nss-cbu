@@ -1,12 +1,12 @@
 package com.nearskysolutions.cloudbackup.common;
 
-import java.io.File;
 import java.util.UUID;
 
 public class BackupFileDataPacket {
 	
 	private UUID dataPacketID;
 	private UUID fileTrackerID;
+	private UUID clientID;	
 	private int bytesContained;
 	private int packetNumber;
 	private int packetsTotal;
@@ -24,14 +24,14 @@ public class BackupFileDataPacket {
 	
 	protected BackupFileDataPacket() { }
 	
-	public BackupFileDataPacket(UUID fileTrackerID, int bytesContained, long endingFileByteCount, 
+	public BackupFileDataPacket(UUID fileTrackerID, UUID clientID, int bytesContained, long endingFileByteCount, 
 								int packetNumber, int packetsTotal, String packetData, 
 								String fileChecksumDigest, FileAction fileAction) {
 		
 		this.dataPacketID = UUID.randomUUID();
 		
-		this.dataPacketID = UUID.randomUUID();
 		this.fileTrackerID = fileTrackerID;
+		this.clientID = clientID;
 		this.bytesContained = bytesContained;
 		this.endingFileByteCount = endingFileByteCount;
 		this.packetNumber = packetNumber;		
@@ -109,12 +109,21 @@ public class BackupFileDataPacket {
 		this.endingFileByteCount = endingFileByteCount;
 	}
 	
+	public UUID getClientID() {
+		return clientID;
+	}
+
+	public void setClientID(UUID clientID) {
+		this.clientID = clientID;
+	}
+
+	
 	@Override
 	public String toString() {
-		return String.format("BackupFileDataPacket[dataPacketID=%d, fileTrackerID=%d, bytesContained=%d, "+
+		return String.format("BackupFileDataPacket[dataPacketID=%s, fileTrackerID=%s, clientID=%s, bytesContained=%d, "+
 								"packetNumber=%d, packetsTotal=%d, fileAction=%s, fileData.length=%d " +
 								"endingFileByteCount=%d]", 
-								dataPacketID, fileTrackerID, bytesContained, packetNumber, packetsTotal, 
+								dataPacketID, fileTrackerID, clientID, bytesContained, packetNumber, packetsTotal, 
 								fileAction, (packetData == null ? 0 : packetData.length()), endingFileByteCount);
 	}	
 	 

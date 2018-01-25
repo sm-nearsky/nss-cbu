@@ -23,6 +23,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.services.BackupFileClientService;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 
@@ -43,12 +44,13 @@ public class BackupFileDataServiceTest {
 	public void queryBackupFileTrackers() throws Exception {
 		
 		UUID clientID = UUID.randomUUID();
-		String fileName1 = UUID.randomUUID().toString();
-		String fileName2 = UUID.randomUUID().toString();
+		String fileName1 = String.format("1_%s",UUID.randomUUID().toString());
+		String fileName2 = String.format("2_%s",UUID.randomUUID().toString());
+		String fileName3 = String.format("3_%s",UUID.randomUUID().toString());
 				
 		File file1 = File.createTempFile(fileName1, null);		
 		File file2 = File.createTempFile(fileName2, null);
-		File file3 = File.createTempFile(fileName2, null);
+		File file3 = File.createTempFile(fileName3, null);
 		
 		
 		try {
@@ -74,23 +76,17 @@ public class BackupFileDataServiceTest {
 															"Repository Location 1", 
 															"Repository Key 1", 
 															file3.getAbsolutePath());
-									
-			bft3.setFileDeleted(true);
-			
+						
 			fileDataSvc.addBackupFileTracker(bft1);
 			fileDataSvc.addBackupFileTracker(bft2);
-			fileDataSvc.addBackupFileTracker(bft3);
-					
+			
+			BackupFileTracker delTracker = fileDataSvc.addBackupFileTracker(bft3);
+			fileDataSvc.deleteBackupFileTracker(delTracker);		
+			
 			List<BackupFileTracker> backupTrackers = fileDataSvc.getAllBackupTrackersForClient(clientID);
 			
 			assertNotNull(backupTrackers);
-			assertEquals(3, backupTrackers.size());
-			
-			backupTrackers = fileDataSvc.getActiveBackupTrackersForClient(clientID);
-			
 			assertEquals(2, backupTrackers.size());
-			assertFalse(backupTrackers.get(0).isFileDeleted());
-			assertFalse(backupTrackers.get(1).isFileDeleted());
 			
 			assertTrue(null != backupTrackers.get(0).getFileAttributes());
 			assertTrue(file1Size.longValue() == backupTrackers.get(0).getFileAttributes().getFileSize().longValue());
@@ -98,7 +94,7 @@ public class BackupFileDataServiceTest {
 			assertTrue(null != backupTrackers.get(1).getFileAttributes());
 			assertTrue(file2Size.longValue() == backupTrackers.get(1).getFileAttributes().getFileSize().longValue());
 			
-			BackupFileTracker tracker = fileDataSvc.getTrackerByBackupFileTrackerID(backupTrackers.get(0).getBackupFileTrackerID());
+			BackupFileTracker tracker = fileDataSvc.getTrackerByBackupFileTrackerID(backupTrackers.get(0).getBackupFileTrackerID(), clientID);
 			
 			assertTrue(null != tracker);
 			assertEquals(tracker.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
@@ -286,8 +282,7 @@ public class BackupFileDataServiceTest {
 			backupFileTracker.setFileName("updated file name");
 			backupFileTracker.setSourceDirectory("updated directory");
 			backupFileTracker.getFileAttributes().setFileModifiedDateTimeMillis(fileUpdateTimestamp.getTimeInMillis());
-			backupFileTracker.setFileDeleted(true);
-			
+						
 			backupFileTracker.getFileAttributes().setFileSize(3000L);
 			backupFileTracker.getFileAttributes().setIsHidden(true);
 			
@@ -305,8 +300,7 @@ public class BackupFileDataServiceTest {
 			assertEquals("updated key", backupFileTracker.getBackupRepositoryKey());
 			assertEquals("updated file name", backupFileTracker.getFileName());
 			assertEquals("updated directory", backupFileTracker.getSourceDirectory());
-			assertTrue(fileUpdateTimestamp.getTime().toInstant().toEpochMilli() == backupFileTracker.getFileAttributes().getFileModifiedDateTimeMillis());
-			assertTrue(backupFileTracker.isFileDeleted());
+			assertTrue(fileUpdateTimestamp.getTime().toInstant().toEpochMilli() == backupFileTracker.getFileAttributes().getFileModifiedDateTimeMillis());			
 			assertTrue(3000L == backupFileTracker.getFileAttributes().getFileSize().longValue());
 			assertTrue(backupFileTracker.getFileAttributes().isHidden());
 			

@@ -88,7 +88,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		UUID packetID = packet.getDataPacketID();
 		UUID trackerID = packet.getFileTrackerID();
 				
-		BackupFileTracker tracker = dataSvc.getTrackerByBackupFileTrackerID(trackerID);
+		BackupFileTracker tracker = dataSvc.getTrackerByBackupFileTrackerID(trackerID, packet.getClientID());
 		
 		UUID clientID = tracker.getClientID();
 		File fileDir = getTrackerDirectory(tracker);
@@ -129,15 +129,16 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 								
 			} else {
 
-				logger.info(String.format(" Processing update for tracker: %s representing file: %s%s%s for client: %s, marking as stored", 
-											trackerID.toString(), tracker.getSourceDirectory(), File.separator, tracker.getFileName(), clientID.toString()));
+				logger.info(String.format(" Processing update for tracker: %s representing file: %s%s%s for client: %s, packet %d of %d", 
+											trackerID.toString(), tracker.getSourceDirectory(), File.separator, tracker.getFileName(), 
+											clientID.toString(), packet.getPacketNumber(), packet.getPacketsTotal()));
 								
 				if( 1 != packet.getPacketNumber() ) {
 				
 					if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus() ) {						
 						retryTracker = true;
 						
-						throw new Exception(String.format("Invalid state for packet number out of order and can't process for packetID: %s, tracker ID: %s", 
+						throw new Exception(String.format("Invalid state - packet number out of order and can't process for packetID: %s, tracker ID: %s", 
 															packetID.toString(), trackerID.toString()));						
 					} else if(false == tmpFile.exists() ) {						
 						retryTracker = true;
@@ -165,7 +166,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						
 					} else {
 						
-						logger.info(String.format("Createing file directory %s for tracker ID: %s", fileDir.getAbsolutePath(), clientID.toString()));
+						logger.info(String.format("Creating file directory %s for tracker ID: %s", fileDir.getAbsolutePath(), clientID.toString()));
 						
 						//Ceate tracker dir with all parents when needed			
 						fileDir.mkdirs();
@@ -331,7 +332,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 			List<BackupFileTracker> trackerList = new ArrayList<BackupFileTracker>();
 			
 			for(UUID trackerID : trackerIDList) {
-				BackupFileTracker bft = this.dataSvc.getTrackerByBackupFileTrackerID(trackerID);
+				BackupFileTracker bft = this.dataSvc.getTrackerByBackupFileTrackerID(trackerID, restoreRequest.getClientID());
 				
 				if( null == bft ) {
 					throw new Exception(String.format("No file tracker found for id: %d", trackerID));

@@ -25,10 +25,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class BackupFileClient {
 	
 	@Id
-	@GeneratedValue(generator = "uuid2")
-	@GenericGenerator(name = "uuid2", strategy = "uuid2")
-	@Column(name="client_id", columnDefinition = "BINARY(16)")		
-	private UUID clientID;
+	@GenericGenerator(name = "generator", strategy = "uuid2")
+	@GeneratedValue(generator = "generator")	
+	@Column(name="client_id", columnDefinition = "uniqueidentifier")	
+	private String clientID;
 	
 	@Column(name="client_name")
 	private String clientName;
@@ -70,9 +70,13 @@ public class BackupFileClient {
 	}
 
 	public UUID getClientID() {
-		return this.clientID;
+		return (null != this.clientID ? UUID.fromString(this.clientID) : null);
 	}
-
+	
+	public void setClientID(UUID clientID) {
+		this.clientID = (null != clientID ? clientID.toString() : null);
+	}
+	
 	public String getClientName() {
 		return this.clientName;
 	}

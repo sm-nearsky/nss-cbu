@@ -27,12 +27,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class BackupFileTracker {
 		
 	@Id
-	@GeneratedValue(generator = "uuid2")
-	@GenericGenerator(name = "uuid2", strategy = "uuid2")
-	@Column(name="backup_file_tracker_id", columnDefinition = "BINARY(16)")
-	private UUID backupFileTrackerID;
+	@GenericGenerator(name = "generator", strategy = "uuid2")
+	@GeneratedValue(generator = "generator")	
+	@Column(name="backup_file_tracker_id", columnDefinition = "uniqueidentifier")	
+	private String backupFileTrackerID;
 	
-	@Column(name="client_id", columnDefinition = "BINARY(16)")
+	@Column(name="client_id", columnDefinition = "uniqueidentifier")
 	private UUID clientID;
 	
 	@Column(name="backup_repository_type")
@@ -52,10 +52,7 @@ public class BackupFileTracker {
 
 	@Column(name="source_directory", nullable=true)
 	private String sourceDirectory;
-	
-	@Column(name="file_deleted")
-	private boolean isFileDeleted;
-		
+			
 	@Column(name="tracker_status")
 	private BackupFileTrackerStatus trackerStatus;
 	
@@ -76,6 +73,9 @@ public class BackupFileTracker {
 	
 	@Transient
 	private boolean isFileNew;
+	
+	@Transient
+	private boolean isFileDeleted;
 	
 	public enum BackupFileTrackerStatus {
 		Pending,
@@ -145,11 +145,11 @@ public class BackupFileTracker {
 	}
 
 	public UUID getBackupFileTrackerID() {
-		return this.backupFileTrackerID;
+		return (null != this.backupFileTrackerID ? UUID.fromString(this.backupFileTrackerID) : null);
 	}
 	
 	public void setBackupFileTrackerID(UUID backupFileTrackerID) {
-		this.backupFileTrackerID = backupFileTrackerID;
+		this.backupFileTrackerID = (null != backupFileTrackerID ? backupFileTrackerID.toString() : null);		
 	}
 	
 	public UUID getClientID() {
@@ -201,15 +201,7 @@ public class BackupFileTracker {
 		this.sourceDirectory = sourceDirectory;
 		
 		createFilePathName();
-	}
-
-	public boolean isFileDeleted() {
-		return this.isFileDeleted;
-	}
-
-	public void setFileDeleted(boolean fileDeleted) {
-		this.isFileDeleted = fileDeleted;
-	}
+	}	
 
 	public boolean isDirectory() {
 		return (null != this.fileAttributes && true == this.fileAttributes.isDirectory());
@@ -265,6 +257,14 @@ public class BackupFileTracker {
 		this.isFileNew = isFileNew;
 	}
 	
+	public boolean isFileDeleted() {
+		return isFileDeleted;
+	}
+
+	public void setFileDeleted(boolean isFileDeleted) {
+		this.isFileDeleted = isFileDeleted;
+	}
+	
 	public String getLastError() {
 		return lastError;
 	}
@@ -298,10 +298,10 @@ public class BackupFileTracker {
 		
 		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
 								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, lastByteSent=%d,"+
-								"trackerStatus=%s, lastError=%s, lastStatusChange=%s, isFileDeleted=%s, fileAttributes=%s]",
+								"trackerStatus=%s, lastError=%s, lastStatusChange=%s, fileAttributes=%s]",
 								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
 								fileName, fileFullPath, sourceDirectory, lastByteSent, trackerStatus.toString(), lastError, 
-								lastStatusChange, isFileDeleted, fileAttributes);
+								lastStatusChange,fileAttributes);
 		
 	}
 
@@ -351,5 +351,4 @@ public class BackupFileTracker {
 					
 		return filesEqual;
 	}	
-	
 }
