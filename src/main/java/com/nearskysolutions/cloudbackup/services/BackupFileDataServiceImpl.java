@@ -7,15 +7,21 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.data.BackupFileTrackerRepository;
 
 @Component
+@CacheConfig(cacheNames={"com.nearskysolutions.cloudbackup.common.BackupFileTracker"})
 public class BackupFileDataServiceImpl implements BackupFileDataService {
 	
 	Logger logger = LoggerFactory.getLogger(BackupFileDataServiceImpl.class);
@@ -23,7 +29,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	@Autowired
 	private BackupFileTrackerRepository trackerRepo;
 	
-	@Override
+	@Override	
 	public BackupFileTracker addBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
 		if( fileTracker == null ) {
 			logger.error("Null BackupFileTracker passed as argument to BackupFileDataPacketServiceImpl.addBackupFileTracker");
@@ -64,6 +70,8 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 
 	@Override
+	@CacheEvict(key = "#fileTracker.backupFileTrackerID+'_'+#fileTracker.clientID")
+	@Transactional
 	public void updateBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
 		
 		if( fileTracker == null ) {
@@ -92,6 +100,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 	
 	@Override
+	@CacheEvict(key = "#fileTracker.backupFileTrackerID+'_'+#fileTracker.clientID")
 	public void deleteBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
 		
 		if( fileTracker == null ) {
@@ -214,6 +223,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 
 	@Override
+	@Cacheable(key = "#trackerID+'_'+#clientID")
 	public BackupFileTracker getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID) {
 		logger.trace(String.format("In BackupFileDataPacketServiceImpl.getTrackerByBackupFileTrackerID(UUID trackerID, UUID clientID) : %s, %s", trackerID, clientID));
 

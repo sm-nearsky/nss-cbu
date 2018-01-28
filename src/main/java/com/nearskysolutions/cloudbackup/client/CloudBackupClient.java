@@ -289,7 +289,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 		if( dtNow.after(this.processingStopTime) ) {
 			logger.info(String.format("Past max run time of %d minutes, discarding update for file tracker ID: %s", 
 										this.cbcConfig.getMaxProcessingMinutes(), 
-										tracker.getBackupFileTrackerID().toString()));			
+										(tracker.getBackupFileTrackerID() != null ? tracker.getBackupFileTrackerID().toString() : "null")));			
 		} else {
 			//Note: Don't need process count for tracker updates because these currently
 			//      all happen on the main thread.  Keeping count to allow for threading option.

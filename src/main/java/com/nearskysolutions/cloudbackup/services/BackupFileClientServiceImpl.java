@@ -6,12 +6,17 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.data.BackupFileClientRepository;
 
 @Component
+@CacheConfig(cacheNames={"com.nearskysolutions.cloudbackup.common.BackupFileClient"})
 public class BackupFileClientServiceImpl implements BackupFileClientService {
 	
 	Logger logger = LoggerFactory.getLogger(BackupFileClientServiceImpl.class);
@@ -48,6 +53,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 	}
 
 	@Override
+	@CacheEvict(key="#backupClient.clientID")
 	public void updateBackupClient(BackupFileClient backupClient) throws Exception {
 		
 		logger.trace("In BackupFileClientServiceImpl.updateBackupClient(BackupFileClient backupClient)");
@@ -78,6 +84,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 	}
 	
 	@Override
+	@CacheEvict(key="#clientID")
 	public void deleteBackupClient(UUID clientID) throws Exception {
 		
 		logger.trace(String.format("In BackupFileClientServiceImpl.deleteBackupClient(UUID clientID): clientID=%s", 
@@ -103,6 +110,7 @@ public class BackupFileClientServiceImpl implements BackupFileClientService {
 	}
 	
 	@Override
+	@Cacheable(key="#clientID")
 	public BackupFileClient getBackupClientByClientID(UUID clientID) throws Exception {
 				
 		logger.trace(String.format("In BackupFileClientServiceImpl.getBackupClientByUUID(UUID clientID): clientID=%s", 

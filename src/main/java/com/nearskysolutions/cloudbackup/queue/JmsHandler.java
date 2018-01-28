@@ -90,6 +90,8 @@ public class JmsHandler {
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
         DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();
+        //Limit thread concurrency to single consecutive
+        returnValue.setConcurrency("1-1");
         returnValue.setConnectionFactory(connectionFactory);
         return returnValue;
     }

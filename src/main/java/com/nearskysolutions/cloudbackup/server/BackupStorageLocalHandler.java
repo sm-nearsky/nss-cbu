@@ -176,10 +176,12 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				logger.info(String.format("Writing packet data for packet %s, packet number: %d of %d", 
 								packetID.toString(), packet.getPacketNumber(), packet.getPacketsTotal()));
 				
-				ByteArrayInputStream bais = new ByteArrayInputStream(Base64.getDecoder().decode(packet.getFileData()));
+				try (ByteArrayInputStream bais = 
+						new ByteArrayInputStream(Base64.getDecoder().decode(packet.getFileData()))) {
 									
-				try (FileOutputStream fos = new FileOutputStream(tmpFile, true)) {										
-					FileZipUtils.WriteZipInputToOutput(bais, fos);														
+					try (FileOutputStream fos = new FileOutputStream(tmpFile, true)) {										
+						FileZipUtils.WriteZipInputToOutput(bais, fos);														
+					}
 				}
 				
 				logger.info(String.format("Saving last byte count saved: %d for tracker: %s", 
@@ -271,26 +273,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 		this.dataSvc.updateBackupFileTracker(tracker);
 		
 		logger.trace(String.format("Completed BackupStorageLocalHandler.processBackupPacket(BackupFileDataPacket packet): packetID = %s", packet.getDataPacketID()));
-	}
-
-	synchronized private byte[] calculateMD5DigestForFile(File tmpFile) throws Exception {
-		MessageDigest messageDigest = (MessageDigest)MessageDigest.getInstance("MD5");
-				
-		try(FileInputStream fis =  new FileInputStream(tmpFile)) {
-			byte[] mdBytes = new byte[4096];
-		   
-		    int numRead;
-
-		    do {
-		       numRead = fis.read(mdBytes);
-		       if (numRead > 0) {
-		    	   messageDigest.update(mdBytes, 0, numRead);
-		       }
-		    } while (numRead != -1);	      
-		}
-		
-		return messageDigest.digest();		
-	}	 	 
+	} 	 
 	     
 	private File getTrackerDirectory(BackupFileTracker tracker) {
 		

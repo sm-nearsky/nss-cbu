@@ -1,6 +1,5 @@
 package com.nearskysolutions.cloudbackup.server;
 
-import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
@@ -15,20 +14,22 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.annotation.JmsListener;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
+import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
-import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.queue.ClientUpdateMessage;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
 
 @EnableJms
+@EnableCaching
 @SpringBootApplication
 @EnableJpaRepositories("com.nearskysolutions.cloudbackup.data")
 @EntityScan("com.nearskysolutions.cloudbackup.common")

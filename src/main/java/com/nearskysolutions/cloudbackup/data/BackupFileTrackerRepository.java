@@ -3,13 +3,15 @@ package com.nearskysolutions.cloudbackup.data;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.nearskysolutions.cloudbackup.common.BackupFileClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 
 public interface BackupFileTrackerRepository extends PagingAndSortingRepository<BackupFileTracker, UUID> {
@@ -18,11 +20,14 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 			+ "WHERE "
 			+ "t.backupFileTrackerID = :trackerID "			
 			+ "AND t.clientID = :clientID "
-			)
+			)	
+	@Transactional(readOnly=true)
 	List<BackupFileTracker> findBySingleTrackerID(@Param("trackerID") String trackerID, @Param("clientID") UUID clientID);
 	
+	@Transactional(readOnly=true)
 	List<BackupFileTracker> findByClientIDOrderByFileFullPath(@Param("clientID") UUID clientID);
 	
+	@Transactional(readOnly=true)
 	Page<BackupFileTracker> findByClientIDOrderByFileFullPath(@Param("clientID") UUID clientID, Pageable pageable);
 	
 	@Query("SELECT t FROM BackupFileTracker t " 
@@ -31,6 +36,7 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 			+ "AND t.trackerStatus != 3 "
 			+ "ORDER BY t.fileFullPath"
 			)
+	@Transactional(readOnly=true)
 	List<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID);
 	
 	@Query("SELECT t FROM BackupFileTracker t " 
@@ -39,6 +45,7 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 			+ "AND t.trackerStatus != 3 "
 			+ "ORDER BY t.fileFullPath"
 			)
+	@Transactional(readOnly=true)
 	Page<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID, Pageable pageable);
 	
 	@Query("SELECT t FROM BackupFileTracker t " 
@@ -51,12 +58,11 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 			+ "AND LOWER(t.fileName) = LOWER(:fileName) "
 		    + "ORDER BY t.fileFullPath"
 			)
+	@Transactional(readOnly=true)
 	List<BackupFileTracker> findMatchingTrackers(@Param("clientID") UUID clientID,
 												 @Param("backupRepositoryType") String backupRepositoryType,
 												 @Param("backupRepositoryLocation") String backupRepositoryLocation,
 												 @Param("backupRepositoryKey") String backupRepositoryKey,
 												 @Param("sourceDirectory") String sourceDirectory,
 												 @Param("fileName") String fileName);
-
-	
 }
