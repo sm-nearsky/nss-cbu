@@ -172,26 +172,31 @@ public class CloudBackupClient  implements CommandLineRunner {
 								
 								if( false == tracker.getFileReference().exists() ) {
 									
-									logger.info(String.format("Marking file for delete: %s", tracker.getFileReference().getAbsolutePath()));
-									
-									tracker.setFileDeleted(true);
-
-									this.sendPacketsForFile(tracker);
+									if(BackupFileTrackerStatus.Deleted == tracker.getTrackerStatus()) {
+										logger.info(String.format("Skipping deleted file: %s for tracker %s", 
+															tracker.getFileReference().getAbsolutePath(),
+															tracker.getBackupFileTrackerID().toString()));
+									} else {
+										logger.info(String.format("Marking file for delete: %s", tracker.getFileReference().getAbsolutePath()));
+										
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
+										
+										this.sendPacketsForFile(tracker);
+									}
 									
 								} else if( false == tracker.equalsFile(tracker.getFileReference()) ) {
 									
 									if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
 										logger.info(String.format("Found changes for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
 										
-										tracker.setFileDeleted(true);
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
 
 										this.sendPacketsForFile(tracker);
 									} else {									
 										logger.info(String.format("Found changes for file: %s", tracker.getFileReference().getAbsolutePath()));
 										
 										tracker.updateFileAttributes(tracker.getFileReference());						
-										tracker.setFileChanged(true);
-										
+																				
 										this.sendTrackerUpdate(tracker);
 	
 										this.sendPacketsForFile(tracker);										
@@ -204,7 +209,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 										if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
 											logger.info(String.format("Found restart state for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
 											
-											tracker.setFileDeleted(true);
+											tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
 		
 											this.sendPacketsForFile(tracker);
 										} else {
@@ -267,9 +272,6 @@ public class CloudBackupClient  implements CommandLineRunner {
 																	 this.cbcConfig.getRepoLoc(), 
 																	 this.cbcConfig.getRepoKey(), 
 																	 trackerFile.getAbsolutePath());
-				
-				newTracker.setFileChanged(true);
-				newTracker.setFileNew(true);
 								
 				this.sendTrackerUpdate(newTracker);
 			}
@@ -294,7 +296,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			//Note: Don't need process count for tracker updates because these currently
 			//      all happen on the main thread.  Keeping count to allow for threading option.
 			logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
-							tracker.getFileReference().getAbsolutePath(), (null != tracker.getBackupFileTrackerID())));
+							tracker.getFileReference().getAbsolutePath(), (null == tracker.getBackupFileTrackerID())));
 			
 			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
 					
@@ -316,10 +318,10 @@ public class CloudBackupClient  implements CommandLineRunner {
 										this.cbcConfig.getMaxProcessingMinutes(), 
 										fileTracker.getBackupFileTrackerID().toString()));			
 		} else {
-			this.packetSendThreadPool.submit(() -> {
+//			this.packetSendThreadPool.submit(() -> {
 				this.handleSendPackets(fileTracker);
-			    return null;
-			});
+//			    return null;
+//			});
 		}
 	}
 	
@@ -331,7 +333,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 		
 		File fileRef = fileTracker.getFileReference();
 		
-		if (false == fileRef.exists() && BackupFileTrackerStatus.Deleted != fileTracker.getTrackerStatus() ) {
+		if (false == fileRef.exists() && (BackupFileTrackerStatus.Deleted != fileTracker.getTrackerStatus()) ) {
 			throw new Exception(String.format("File %s doesn't exist", fileRef.getAbsolutePath()));
 		} 
 		
@@ -355,9 +357,9 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			FileAction action;
 	        
-	        if( fileTracker.isFileDeleted() ) {
+	        if( BackupFileTrackerStatus.Deleted == fileTracker.getTrackerStatus() ) {
 	        	action = FileAction.Delete;
-	        } else if ( fileTracker.isFileNew() ) {
+	        } else if ( null == fileTracker.getBackupFileTrackerID() ) {
 	        	action = FileAction.Create;
 	        } else {
 	        	action = FileAction.Update;

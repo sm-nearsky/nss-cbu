@@ -93,13 +93,12 @@ public class CloudBackupServer  implements CommandLineRunner {
 		
 		return String.format("%s%s", MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX, trackerFileID.substring(0, 2));
 	}
-	
+		
 	@JmsListener(destination = "nssCbuClientUpdates")
     public void receiveMessage(String message) {
 
-		logger.info("receiveMessage in thread: " + Thread.currentThread().getName());
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
-		
+								
 		ClientUpdateMessage updateMessage = (ClientUpdateMessage)JsonConverter.ConvertJsonToObject(message, ClientUpdateMessage.class);
         
 		logger.info(String.format("Cloud backup message received from queue, message ID: %s and message type: %s",
@@ -111,42 +110,42 @@ public class CloudBackupServer  implements CommandLineRunner {
 					BackupFileTracker tracker = (BackupFileTracker)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileTracker.class);        	
 		        	logger.info(String.format("Processing add or update for backup file tracker ID: %s", tracker.getBackupFileTrackerID()));
 		        	
-		        	//Tracker update processing can be performed in parallel
-		        	this.threadBank.get(TRACKER_UPDATE_THREAD_NAME).submit(() -> {
+//		        	//Tracker update processing can be performed in parallel
+//		        	this.threadBank.get(TRACKER_UPDATE_THREAD_NAME).submit(() -> {
 		        		this.addOrUpdateFileTracker(tracker);
-					    return null;
-					});
+//					    return null;
+//					});
 		        	
 		        break;	
 				case FilePacket:        	
 		        	BackupFileDataPacket packet = (BackupFileDataPacket)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupFileDataPacket.class);        	
 		        	logger.info(String.format("Processing backup file packet with ID: %s", packet.getDataPacketID().toString()));
 		        	
-		        	if( 1 == packet.getPacketsTotal() ) {
-		        		//Files that only require one packet can be handled in parallel
-		        		this.threadBank.get(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME).submit(() -> {
+//		        	if( 1 == packet.getPacketsTotal() ) {
+//		        		//Files that only require one packet can be handled in parallel
+//		        		this.threadBank.get(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME).submit(() -> {
+//		        			this.backupStorageHandler.processBackupPacket(packet);
+//						    return null;
+//						});	        		
+//		        	} else {
+//		        		//If the file requires more than one packet then handle on one
+//		        		//of the alphabetical threads so the assembly remains serialized
+//		        		this.threadBank.get(getThreadNameForTrackerFileID(packet.getFileTrackerID().toString())).submit(() -> {
 		        			this.backupStorageHandler.processBackupPacket(packet);
-						    return null;
-						});	        		
-		        	} else {
-		        		//If the file requires more than one packet then handle on one
-		        		//of the alphabetical threads so the assembly remains serialized
-		        		this.threadBank.get(getThreadNameForTrackerFileID(packet.getFileTrackerID().toString())).submit(() -> {
-		        			this.backupStorageHandler.processBackupPacket(packet);
-						    return null;
-						});	
-		        	}
+//						    return null;
+//						});	
+//		        	}
 		        	
 		        break;
 				case FileRestore:        	
 		        	BackupRestoreRequest restoreRequest = (BackupRestoreRequest)JsonConverter.ConvertJsonToObject(updateMessage.getMessageBody(), BackupRestoreRequest.class);        	
 		        	logger.info(String.format("Processing restore request ID: %s", restoreRequest.getRequestID().toString()));
 		        	
-		        	//Restore requests can be performed in parallel
-		        	this.threadBank.get(RESTORE_REQEUST_THREAD_NAME).submit(() -> {
+//		        	//Restore requests can be performed in parallel
+//		        	this.threadBank.get(RESTORE_REQEUST_THREAD_NAME).submit(() -> {
 		        		this.processRestoreRequest(restoreRequest);
-					    return null;
-					});        	
+//					    return null;
+//					});        	
 		        		        	        	        	
 		        	break;        	
 		        default:
@@ -160,16 +159,22 @@ public class CloudBackupServer  implements CommandLineRunner {
 		logger.trace("Completed CloudBackupServer.receiveMessage(String message)");
     }	
 		
+	@JmsListener(destination = "nssCbuClientUpdates/$DeadLetterQueue")
+    public void receiveDLQMessage(String message) {
+		logger.info(String.format("Discardig dead letter message: %s", message));
+	}
+	
 	private void addOrUpdateFileTracker(BackupFileTracker newTracker) throws Exception { 
 		 
 		logger.info("Processing tracker update on thread: " + Thread.currentThread().getName());
+		
 		if( null == newTracker ) {
 			logger.error("Null tracker passed to CloudBackupServer.updateFileTrackerListing");
 			throw new NullPointerException("tracker can't be null");
 		}
 		
 		logger.trace(String.format("In CloudBackupServer.addOrUpdateFileTracker(BackupFileTracker newTracker): tracker ID=%s", newTracker.getBackupFileTrackerID()));
-		
+						
 		if( null != newTracker.getBackupFileTrackerID() ) {
 			
 			BackupFileTracker compareTracker = this.fileDataSvc.getTrackerByBackupFileTrackerID(newTracker.getBackupFileTrackerID(), newTracker.getClientID());
@@ -205,10 +210,10 @@ public class CloudBackupServer  implements CommandLineRunner {
 			logger.info(String.format("Updating tracker record for client ID: %s, directory: %s, file: %s", 
 										newTracker.getClientID().toString(), 
 										newTracker.getSourceDirectory(), 
-										newTracker.getFileName()));
+										newTracker.getFileName()));	
 			
-			newTracker.setFileChanged(true);
-			
+			this.fileDataSvc.updateBackupFileTracker(newTracker);
+						
 		} else {
 		
 			List<BackupFileTracker> trackerFileList = this.fileDataSvc.findMatchingTrackers(newTracker.getClientID(), 
@@ -239,32 +244,21 @@ public class CloudBackupServer  implements CommandLineRunner {
 					//Delete tracker so a new one will be created
 					this.fileDataSvc.deleteBackupFileTracker(trackerFileList.get(0));
 					
-					newTracker.setBackupFileTrackerID(null);
-					newTracker.setFileNew(true);					
+					newTracker.setBackupFileTrackerID(null);										
 				} else {
 					//TODO Verify this works
-					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());
-					
-					newTracker.setFileChanged(true);
+					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());					
 				}
-				
-				
 				
 			} else { //0 == trackerFileList.size()
 				logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 
 											newTracker.getClientID().toString(), 
 											newTracker.getSourceDirectory(), 
 											newTracker.getFileName()));
-				
-				newTracker.setFileNew(true);
 			}
-		}			
-		
-		if( newTracker.isFileNew() ) {
+			
 			this.fileDataSvc.addBackupFileTracker(newTracker);
-		} else if( newTracker.isFileChanged() ) {
-			this.fileDataSvc.updateBackupFileTracker(newTracker);
-		}
+		}			
 		
 		logger.trace(String.format("Completed CloudBackupServer.addOrUpdateFileTracker(BackupFileTracker newTracker): tracker ID=%s", newTracker.getBackupFileTrackerID()));
 	}

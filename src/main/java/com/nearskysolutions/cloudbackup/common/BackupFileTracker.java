@@ -68,15 +68,6 @@ public class BackupFileTracker {
 	@Column(name="last_byte_sent")
 	private Long lastByteSent; 
 	
-	@Transient
-	private boolean isFileChanged;
-	
-	@Transient
-	private boolean isFileNew;
-	
-	@Transient
-	private boolean isFileDeleted;
-	
 	public enum BackupFileTrackerStatus {
 		Pending,
 		Processing,
@@ -239,30 +230,6 @@ public class BackupFileTracker {
 
 	public void setTrackerStatus(BackupFileTrackerStatus trackerStatus) {
 		this.trackerStatus = trackerStatus;
-	}
-	
-	public boolean isFileChanged() {
-		return isFileChanged;
-	}
-
-	public void setFileChanged(boolean isFileChanged) {
-		this.isFileChanged = isFileChanged;
-	}
-	
-	public boolean isFileNew() {
-		return isFileNew;
-	}
-
-	public void setFileNew(boolean isFileNew) {
-		this.isFileNew = isFileNew;
-	}
-	
-	public boolean isFileDeleted() {
-		return isFileDeleted;
-	}
-
-	public void setFileDeleted(boolean isFileDeleted) {
-		this.isFileDeleted = isFileDeleted;
 	}
 	
 	public String getLastError() {

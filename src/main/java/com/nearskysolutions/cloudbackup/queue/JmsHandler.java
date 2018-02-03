@@ -8,9 +8,8 @@ import org.apache.qpid.jms.JmsConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.jms.UncategorizedJmsException;
+import org.springframework.jms.JmsException;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
@@ -43,8 +42,9 @@ public class JmsHandler {
 		}
 				
 		String message = JsonConverter.ConvertObjectToJson(obj);
-		int numRetries = (bUseRetry ? 3 : 0);
-				
+		int numRetries = (bUseRetry ? 5 : 0);
+		int retryMultiplier = 1;
+		
 		logger.info(String.format("Sending object of type %s to destination=%s", obj.getClass().getName(), destination));
 		
 		do
@@ -55,17 +55,12 @@ public class JmsHandler {
 				
 				numRetries = 0;
 				
-			} catch (UncategorizedJmsException jmsEx) {
-				if( -1 != jmsEx.getMessage().indexOf("Address already in use") ) {
-					//Back off to so reconnect can be attempted
-					logger.info(String.format("Connection failed while trying to send message of type %s to destination=%s, backing off for retry", 
-												obj.getClass().getName(), destination));
-					
-					Thread.sleep(500);
-				} else {
-					//Can't recover, throw the exception
-					throw jmsEx;
-				}
+			} catch (JmsException jmsEx) {
+				
+				logger.info(String.format("JMS error: %s while trying to send message of type %s to destination=%s, backing off for retry", 
+										 	jmsEx.getMessage(),	obj.getClass().getName(), destination));
+				
+				Thread.sleep(60000 * retryMultiplier++);				
 			}
 		} while(--numRetries >= 0);
 	}
