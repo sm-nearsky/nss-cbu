@@ -5,6 +5,7 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrack
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
 import com.nearskysolutions.cloudbackup.common.BackupStorageHandler;
 import com.nearskysolutions.cloudbackup.queue.ClientUpdateMessage;
+import com.nearskysolutions.cloudbackup.queue.JmsHandler;
 import com.nearskysolutions.cloudbackup.services.BackupFileDataService;
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
 
@@ -47,13 +49,23 @@ public class CloudBackupServer  implements CommandLineRunner {
 	@Autowired 
 	private BackupFileDataService fileDataSvc;
 	
+	@Autowired
+	private JmsHandler jmsHandler;
+	
+	private boolean inShutdown = false;
+	
 	private Dictionary<String, ThreadPoolExecutor> threadBank;
 		
+	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
+	
+	private final int maxMessageBeforePause = 10000;
+	private final int messagePauseSeconds = 5000;
+	
 	private static final String TRACKER_UPDATE_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.TrackerUpdateThread";
 	private static final String RESTORE_REQEUST_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.RestoreRequestThread";
 	private static final String SINGLE_PACKET_FILE_UPDATE_THREAD_NAME = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.SingleFilePacketFileUpdateThread";
 	private static final String MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.TrackerUpdateThread_";
-	
+	private static final String MESSAGE_PROCESSING_THREADS = "com.nearskysolutions.cloudbackup.server.CloudBackupServer.MessageProcessingThread";
 	
 	public void run(String... args) {
 		
@@ -69,6 +81,9 @@ public class CloudBackupServer  implements CommandLineRunner {
 			
 			this.threadBank.put(SINGLE_PACKET_FILE_UPDATE_THREAD_NAME, (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbsConfig.getSinglePacketHandlerThreadCount()));
 			
+			//TODO Externalize
+			this.threadBank.put(MESSAGE_PROCESSING_THREADS, (ThreadPoolExecutor) Executors.newFixedThreadPool(10));
+			
 			String threadNameChars = "abcdef1234567890";
 			
 			for(int i = 0; i < threadNameChars.length(); i++) {			
@@ -79,22 +94,61 @@ public class CloudBackupServer  implements CommandLineRunner {
 					this.threadBank.put(threadNameKey, (ThreadPoolExecutor) Executors.newFixedThreadPool(1));		
 				}
 			}
+
+			//TODO Externalize
+			this.jmsHandler.setMessageWaitTimeout(500);
 			
-			//TODO Add clean-up for temp files left behind after aborted
-			//     file saves
+			//TODO Evaluate loop
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				@Override
+				public void run() {
+					CloudBackupServer.this.inShutdown = true;
+				}				
+			});
+			
+			logger.info("Starting server message loop");
+			
+			while(false == this.inShutdown ) {
+//				this.threadBank.get(MESSAGE_PROCESSING_THREADS).submit(() -> {
+					String message = null;
+					
+	//				try {
+						message = this.jmsHandler.waitForMessageOnQueue("nssCbuClientUpdates");
+						
+						if( message != null ) {
+							this.receiveMessage(message);
+						} else { //Only check DLQ if not processing standard messages
+							message = this.jmsHandler.waitForMessageOnQueue("nssCbuClientUpdates/$DeadLetterQueue");
+							
+							if( message != null ) {
+								this.receiveDLQMessage(message);
+							}
+						}
+						
+	//				} catch(javax.jms.IllegalStateException ex) {
+	//					if( false == ex.getMessage().contains("The Session is closed") || false == this.inShutdown ) {
+	//						logger.error("Receive thread processing erro: ", ex);
+	//					}
+	//				}
+//					return null;
+//				});			
+			} 
+			
+			logger.info("Finished server message loop");
+			
 		} catch (Exception ex) {
 			logger.error("Server run failed", ex);
 			
 			System.exit(1);
 		}
 	}
-	
+		
 	private String getThreadNameForTrackerFileID(String trackerFileID) {
 		
 		return String.format("%s%s", MULTI_PACKET_FILE_UPDATE_THREAD_NAME_PREFIX, trackerFileID.substring(0, 2));
 	}
 		
-	@JmsListener(destination = "nssCbuClientUpdates")
+	//@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-1")
     public void receiveMessage(String message) {
 
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
@@ -152,6 +206,15 @@ public class CloudBackupServer  implements CommandLineRunner {
 		        	throw new Exception(String.format("Unknown message update type: %s for messsage ID: %s", 
 		        			updateMessage.getMessageType(), updateMessage.getMessageID()));	        	
 			}
+			
+//			if(this.messageProcessingCount.incrementAndGet() > this.maxMessageBeforePause) {
+//				logger.info("Pausing message processing after reaching max message count");
+//				
+//				Thread.sleep(this.messagePauseSeconds * 1000);
+//				
+//				this.messageProcessingCount.set(0);
+//			}
+			
 		} catch(Exception ex) {
 			logger.error("Error in message handling", ex);
 		}
@@ -159,15 +222,25 @@ public class CloudBackupServer  implements CommandLineRunner {
 		logger.trace("Completed CloudBackupServer.receiveMessage(String message)");
     }	
 		
-	@JmsListener(destination = "nssCbuClientUpdates/$DeadLetterQueue")
+	//@JmsListener(destination = "nssCbuClientUpdates/$DeadLetterQueue", concurrency="1-5")
     public void receiveDLQMessage(String message) {
-		logger.info(String.format("Discardig dead letter message: %s", message));
+//		try {
+			logger.info(String.format("Discarding dead letter message: %s", message.substring(0, Math.min(message.length(), 250))));
+//			
+//			if(this.messageProcessingCount.incrementAndGet() > this.maxMessageBeforePause) {
+//				logger.info("Pausing message processing after reaching max message count");
+//				
+//				Thread.sleep(this.messagePauseSeconds * 1000);
+//				
+//				this.messageProcessingCount.set(0);
+//			}
+//		} catch(Exception ex) {
+//			logger.error("Error in dead letter message handling", ex);
+//		}
 	}
 	
 	private void addOrUpdateFileTracker(BackupFileTracker newTracker) throws Exception { 
-		 
-		logger.info("Processing tracker update on thread: " + Thread.currentThread().getName());
-		
+				
 		if( null == newTracker ) {
 			logger.error("Null tracker passed to CloudBackupServer.updateFileTrackerListing");
 			throw new NullPointerException("tracker can't be null");

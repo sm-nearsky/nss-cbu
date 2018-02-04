@@ -3,6 +3,8 @@ package com.nearskysolutions.cloudbackup.queue;
 import java.io.UnsupportedEncodingException;
 
 import javax.jms.ConnectionFactory;
+import javax.jms.Message;
+import javax.jms.TextMessage;
 
 import org.apache.qpid.jms.JmsConnectionFactory;
 import org.slf4j.Logger;
@@ -65,6 +67,31 @@ public class JmsHandler {
 		} while(--numRetries >= 0);
 	}
 	
+	public String waitForMessageOnQueue(String queueName) {
+		
+		logger.trace(String.format("JMS waiting on message for queue: %s with timeout %d", queueName, this.jmsTemplate.getReceiveTimeout()));
+		
+		String retVal = null;
+		
+		try {
+			Message msg = this.jmsTemplate.receive(queueName);
+			
+			if( msg != null ) {
+				retVal = ((TextMessage) msg).getText();
+			}
+		} catch(Exception ex) {
+			logger.error("Error in waiting for JMS message: ", ex);
+		}
+		
+		logger.trace(String.format("Completed wait with message result: %s", (retVal == null ? "null" : retVal.substring(0, Math.min(retVal.length(),  250)))));
+		
+		return retVal;
+	}
+	
+	public void setMessageWaitTimeout(int seconds) {
+		this.jmsTemplate.setReceiveTimeout(seconds);		
+	}
+	
     @Bean
     public ConnectionFactory jmsConnectionFactory(JmsQpidConfiguration qpidConfig) throws UnsupportedEncodingException {
         JmsConnectionFactory jmsConnectionFactory = new JmsConnectionFactory(qpidConfig.getUrlString());
@@ -72,6 +99,7 @@ public class JmsHandler {
         jmsConnectionFactory.setPassword(qpidConfig.getServicePassword());
         jmsConnectionFactory.setClientID(qpidConfig.getClientId());
         jmsConnectionFactory.setReceiveLocalOnly(true);
+        
         return new CachingConnectionFactory(jmsConnectionFactory);
     }
     
@@ -84,9 +112,7 @@ public class JmsHandler {
     
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
-        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();
-        //Limit thread concurrency to single consecutive
-        returnValue.setConcurrency("1-1");
+        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();        
         returnValue.setConnectionFactory(connectionFactory);
         return returnValue;
     }
