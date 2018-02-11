@@ -55,7 +55,9 @@ public class ClientUpdateHandlerQueue {
 			throw new Exception("fileTracker can't be null");
 		}
 		
-		sendJmsMessageToQueue(ClientUpdateMessageType.FileTracker, fileTracker);
+		sendJmsMessageToQueue(ClientUpdateMessageType.FileTracker, 
+								(fileTracker.getBackupFileTrackerID() != null ? fileTracker.getBackupFileTrackerID().toString() : null), 
+								fileTracker);
 		
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 	}
@@ -68,7 +70,7 @@ public class ClientUpdateHandlerQueue {
 			throw new Exception("filePacket can't be null");
 		}
 		
-		sendJmsMessageToQueue(ClientUpdateMessageType.FilePacket, filePacket);
+		sendJmsMessageToQueue(ClientUpdateMessageType.FilePacket, filePacket.getFileTrackerID().toString(), filePacket);
 			
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 		
@@ -81,13 +83,13 @@ public class ClientUpdateHandlerQueue {
 			throw new Exception("restoreRequest can't be null");
 		}
 		
-		sendJmsMessageToQueue(ClientUpdateMessageType.FileRestore, restoreRequest);
+		sendJmsMessageToQueue(ClientUpdateMessageType.FileRestore, restoreRequest.getRequestID().toString(), restoreRequest);
 				
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendBackupRestoreRequest(BackupRestoreRequest restoreRequest)");
 		
 	}
 
-	private void sendJmsMessageToQueue(ClientUpdateMessageType messageType, Object messageObj) throws Exception {
+	private void sendJmsMessageToQueue(ClientUpdateMessageType messageType, String messageObjectKey, Object messageObj) throws Exception {
 	
 		ClientUpdateMessage updateMessage = new ClientUpdateMessage(new Date(), 
 																	messageType, 
@@ -98,7 +100,7 @@ public class ClientUpdateHandlerQueue {
 		logger.info(String.format("Sending file tracker client update message with message ID: %s", 
 									updateMessage.getMessageID().toString()));
 		
-		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), updateMessage, true);	
+		this.jmsHandler.sendJsonJmsMessage(this.getClientUpdateQueueName(), messageObjectKey, updateMessage, true);	
 		
 	}
 }

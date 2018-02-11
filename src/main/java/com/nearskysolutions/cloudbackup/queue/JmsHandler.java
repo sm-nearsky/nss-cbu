@@ -3,8 +3,6 @@ package com.nearskysolutions.cloudbackup.queue;
 import java.io.UnsupportedEncodingException;
 
 import javax.jms.ConnectionFactory;
-import javax.jms.Message;
-import javax.jms.TextMessage;
 
 import org.apache.qpid.jms.JmsConnectionFactory;
 import org.slf4j.Logger;
@@ -29,12 +27,8 @@ public class JmsHandler {
 	
 	@Autowired
 	private JmsTemplate jmsTemplate;
-			
-	public JmsHandler() {
 		
-	}
-		
-	public void sendJsonJmsMessage(String destination, Object obj, boolean bUseRetry) throws Exception {		
+	public void sendJsonJmsMessage(String destination, String messageObjectKey, Object obj, boolean bUseRetry) throws Exception {		
 		if( null == destination ) {
 			throw new Exception("destination argument can't be null");
 		}
@@ -43,53 +37,31 @@ public class JmsHandler {
 			throw new Exception("obj argument can't be null");
 		}
 				
+		String queueSelection = String.format("%s.%s", 
+									destination, ((null != messageObjectKey && messageObjectKey.length() > 0) ? messageObjectKey.substring(0,1) : "x"));
+		
 		String message = JsonConverter.ConvertObjectToJson(obj);
 		int numRetries = (bUseRetry ? 5 : 0);
 		int retryMultiplier = 1;
 		
-		logger.info(String.format("Sending object of type %s to destination=%s", obj.getClass().getName(), destination));
+		logger.info(String.format("Sending object of type %s to queueSelection=%s", obj.getClass().getName(), queueSelection));
 		
 		do
 		{
 			try {
 				
-				this.jmsTemplate.convertAndSend(destination, message);
+				this.jmsTemplate.convertAndSend(queueSelection, message);
 				
 				numRetries = 0;
 				
 			} catch (JmsException jmsEx) {
 				
-				logger.info(String.format("JMS error: %s while trying to send message of type %s to destination=%s, backing off for retry", 
-										 	jmsEx.getMessage(),	obj.getClass().getName(), destination));
+				logger.info(String.format("JMS error: %s while trying to send message of type %s to queueSelection=%s, backing off for retry", 
+										 	jmsEx.getMessage(),	obj.getClass().getName(), queueSelection));
 				
 				Thread.sleep(60000 * retryMultiplier++);				
 			}
 		} while(--numRetries >= 0);
-	}
-	
-	public String waitForMessageOnQueue(String queueName) {
-		
-		logger.trace(String.format("JMS waiting on message for queue: %s with timeout %d", queueName, this.jmsTemplate.getReceiveTimeout()));
-		
-		String retVal = null;
-		
-		try {
-			Message msg = this.jmsTemplate.receive(queueName);
-			
-			if( msg != null ) {
-				retVal = ((TextMessage) msg).getText();
-			}
-		} catch(Exception ex) {
-			logger.error("Error in waiting for JMS message: ", ex);
-		}
-		
-		logger.trace(String.format("Completed wait with message result: %s", (retVal == null ? "null" : retVal.substring(0, Math.min(retVal.length(),  250)))));
-		
-		return retVal;
-	}
-	
-	public void setMessageWaitTimeout(int seconds) {
-		this.jmsTemplate.setReceiveTimeout(seconds);		
 	}
 	
     @Bean
@@ -97,31 +69,23 @@ public class JmsHandler {
         JmsConnectionFactory jmsConnectionFactory = new JmsConnectionFactory(qpidConfig.getUrlString());
         jmsConnectionFactory.setUsername(qpidConfig.getServiceUsername());
         jmsConnectionFactory.setPassword(qpidConfig.getServicePassword());
-        jmsConnectionFactory.setClientID(qpidConfig.getClientId());
-        jmsConnectionFactory.setReceiveLocalOnly(true);
+        jmsConnectionFactory.setClientID(qpidConfig.getClientId());             
+        jmsConnectionFactory.setReceiveLocalOnly(true);        
         
         return new CachingConnectionFactory(jmsConnectionFactory);
     }
     
     @Bean
     public JmsTemplate jmsTemplate(ConnectionFactory jmsConnectionFactory) {
-        JmsTemplate returnValue = new JmsTemplate();
-        returnValue.setConnectionFactory(jmsConnectionFactory);
-        return returnValue;
+    	return new JmsTemplate(jmsConnectionFactory);
     }
     
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
         DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();        
         returnValue.setConnectionFactory(connectionFactory);
+
         return returnValue;
-    }
-    
-//    @Bean
-//    public JmsListenerContainerFactory topicJmsListenerContainerFactory(ConnectionFactory connectionFactory) {
-//        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();
-//        returnValue.setConnectionFactory(connectionFactory);
-//        returnValue.setSubscriptionDurable(Boolean.TRUE);
-//        return returnValue;
-//    }    
+    }    
+
 }

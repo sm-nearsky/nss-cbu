@@ -1,12 +1,13 @@
 package com.nearskysolutions.cloudbackup.server;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.jms.annotation.EnableJms;
 import org.springframework.stereotype.Component;
 
+@EnableJms	
 @Component
 @ComponentScan(basePackages="com.nearskysolutions.cloudbackup.server,"+
 							"com.nearskysolutions.cloudbackup.common,"+

@@ -11,16 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
-import java.security.DigestInputStream;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.catalina.TrackedWebResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,15 +132,16 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 								
 				if( 1 != packet.getPacketNumber() ) {
 				
-					if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus() ) {						
+					if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus() &&
+							BackupFileTrackerStatus.Retry != tracker.getTrackerStatus()) {						
 						retryTracker = true;
 						
-						throw new Exception(String.format("Invalid state - packet number out of order and can't process for packetID: %s, tracker ID: %s", 
-															packetID.toString(), trackerID.toString()));						
+						throw new Exception(String.format("Invalid state - packet number out of order and can't process for packetID: %s, tracker ID: %s, packet #: %d, state: %s", 
+															packetID.toString(), trackerID.toString(), packet.getPacketNumber(), tracker.getTrackerStatus().toString()));						
 					} else if(false == tmpFile.exists() ) {						
 						retryTracker = true;
 					
-						throw new Exception(String.format("Packet number out of order and can't process for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));
+						throw new Exception(String.format("Not first packet and no temp file for packetID: %s, tracker ID: %s", packetID.toString(), trackerID.toString()));
 					} 
 					
 				} else {				
@@ -222,7 +220,8 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 						String md5Encoded = Base64.getEncoder().encodeToString(messageDigest.digest());
 						
 						if( false == md5Encoded.equals(packet.getFileChecksumDigest()) ) {						
-							logger.info(String.format("Checksum mis-match for tracker: %s, marking tracker for retry", trackerID.toString()));
+							logger.info(String.format("Checksum mis-match for tracker: %s, packet value: %s, calc value: %s, marking tracker for retry", 
+														trackerID.toString(), packet.getFileChecksumDigest(), md5Encoded));
 							
 							retryTracker = true;
 							

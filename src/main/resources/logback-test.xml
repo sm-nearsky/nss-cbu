@@ -24,7 +24,10 @@
   </appender> 
   
   <logger name="com.nearskysolutions.cloudbackup.util" level="error" />
-  <logger name="com.nearskysolutions.cloudbackup.services" level="info" />
+  <logger name="com.nearskysolutions.cloudbackup.services" level="error" />
+  <logger name="org.apache.qpid.jms.message" level="error" />
+  <!-- <logger name="com.nearskysolutions.cloudbackup.client" level="error" /> -->
+  <!--  <logger name="org.apache.qpid.jms" level="trace" /> -->
   
   <root level="info">
     <appender-ref ref="STDOUT" />

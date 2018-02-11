@@ -10,6 +10,8 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -50,13 +52,11 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private RestTemplate restTemplate;
 	
-	private ThreadPoolExecutor packetSendThreadPool;	
-		
-	private AtomicInteger currentProcessingCount = new AtomicInteger(0);
-	private AtomicInteger globalPacketSendCount = new AtomicInteger(0);
-	private AtomicInteger globalTrackerSendCount = new AtomicInteger(0);
-	
 	private Date processingStopTime;
+	
+	private Dictionary<String, ThreadPoolExecutor> threadBank;
+	
+	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
 	
 	public void run(String... args) {
 	
@@ -73,24 +73,25 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			this.processingStopTime = cal.getTime();
 			
-			packetSendThreadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(this.cbcConfig.getPacketSendThreadCount());
-
+			this.threadBank = new Hashtable<String, ThreadPoolExecutor>();
+			
+			String threadNameChars = "abcdef1234567890x";
+			
+			for(int i = 0; i < threadNameChars.length(); i++) {
+				this.threadBank.put(threadNameChars.substring(i, i+1), (ThreadPoolExecutor) Executors.newFixedThreadPool(1));			
+			}
+			
 			this.scanAndSendBackups();
+		
+			while(0 < messageProcessingCount.get()) { 
+				Thread.sleep(500);
+			}
 			
 		} catch (Exception ex) {
 			logger.error("Unable to process backups due to exception", ex);
-		}	
+		}			
 		
-		while(0 < currentProcessingCount.get() ) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException ex) {
-				logger.error("Error in sleep wait", ex);
-			}
-		}
-		
-		System.exit(0);
-		
+		System.exit(0);		
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -283,6 +284,13 @@ public class CloudBackupClient  implements CommandLineRunner {
 			}
 		}
 	}
+	
+	private ThreadPoolExecutor getThreadPoolForTrackerRef(BackupFileTracker tracker ) {
+	
+		String threadBankKey = ( null == tracker.getBackupFileTrackerID() ) ? "x" : tracker.getBackupFileTrackerID().toString().substring(0, 1);
+		
+		return this.threadBank.get(threadBankKey);
+	}
 			
 	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
 		//Don't allow more messages if past maximum processing time
@@ -298,14 +306,18 @@ public class CloudBackupClient  implements CommandLineRunner {
 			logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
 							tracker.getFileReference().getAbsolutePath(), (null == tracker.getBackupFileTrackerID())));
 			
-			this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
-					
-			if(this.globalTrackerSendCount.incrementAndGet() > this.cbcConfig.getTrackerSendBeforePause()) {
-				logger.info("Backing off tracker send after sending max messages");
-				Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-				
-				this.globalTrackerSendCount.set(0);
-			}
+			this.messageProcessingCount.incrementAndGet();
+			
+			this.getThreadPoolForTrackerRef(tracker).submit(() -> {
+				try {
+					this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);			
+				} catch(Exception ex) {
+					logger.error("Error in tracker send: ", ex);
+				} finally {
+					this.messageProcessingCount.decrementAndGet();
+				}
+			    return null;
+			});							
 		}
 	}
 	
@@ -318,10 +330,19 @@ public class CloudBackupClient  implements CommandLineRunner {
 										this.cbcConfig.getMaxProcessingMinutes(), 
 										fileTracker.getBackupFileTrackerID().toString()));			
 		} else {
-//			this.packetSendThreadPool.submit(() -> {
-				this.handleSendPackets(fileTracker);
-//			    return null;
-//			});
+			
+			this.messageProcessingCount.incrementAndGet();
+			
+			this.getThreadPoolForTrackerRef(fileTracker).submit(() -> {				
+				try {
+					this.handleSendPackets(fileTracker);
+				} catch(Exception ex) {
+					logger.error("Error in packet send: ", ex);
+				} finally {
+					this.messageProcessingCount.decrementAndGet();
+				}
+			    return null;
+			});			
 		}
 	}
 	
@@ -338,9 +359,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 		} 
 		
 		try {
-				
-			currentProcessingCount.incrementAndGet();
-			
+						
 			logger.info(String.format("Preparing packets for file or dir: %s", fileRef.getAbsolutePath()));
 					
 			BackupFileDataPacket dataPacket;
@@ -489,24 +508,13 @@ public class CloudBackupClient  implements CommandLineRunner {
 						logger.info(String.format("Sending packet %d of %d for file: %s, tracker ID: %s",
 								dataPacket.getPacketNumber(), dataPacket.getPacketsTotal(), fileTracker.getFileFullPath(), fileTracker.getBackupFileTrackerID()));
 						
-						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);
-						
-						//Sleep after configured packet max to let queues catch up
-						//and garbage collection occur
-						if(globalPacketSendCount.incrementAndGet() > cbcConfig.getPacketSendBeforePause()) {
-							logger.info("Backing off packet send after sending max messages");
-							Thread.sleep(cbcConfig.getMessageSendPauseSeconds() * 1000);
-							
-							this.globalPacketSendCount.set(0);
-						}					
+						this.clientUpdateHandlerQueue.sendBackupFilePacket(dataPacket);										
 					}
 				}
 			}		
 		} catch( Exception ex ) {
 			logger.error(String.format("Exeption processing packets for file tracker: %s, file path: %s", 
 							fileTracker.getBackupFileTrackerID(), fileTracker.getFileFullPath()), ex);
-		} finally {
-			this.currentProcessingCount.decrementAndGet();
-		}
+		} 
 	}
 }
