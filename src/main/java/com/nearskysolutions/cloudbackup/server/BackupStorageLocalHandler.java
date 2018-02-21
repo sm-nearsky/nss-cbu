@@ -48,14 +48,14 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 	@Autowired
 	private BackupRestoreRequestService restoreSvc;
 	
+	@Autowired
+	CloudBackupServerConfig cbsConfig;
+	
 	@Value( "${com.nearskysolutions.cloudbackup.localstore.fileStorageRootDir}" )
 	private String fileStorageRootDir;
 	
 	@Value( "${com.nearskysolutions.cloudbackup.localstore.fileStorageRestoreDir}" )
 	private String fileStorageRestoreDir;
-	
-	@Value( "${com.nearskysolutions.cloudbackup.localstore.maxRestoreSize}" )
-	private int maxRestoreSize;
 	
 	private File systemTempDir;
 	
@@ -366,7 +366,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 					logger.info(String.format("Current restore size for restore request: %s = %d", 
 									restoreRequest.getRequestID().toString(), totalFileSize));
 					
-					if( totalFileSize > this.maxRestoreSize ) {
+					if( totalFileSize > this.cbsConfig.getMaxRestoreSize() ) {
 						throw new Exception("Maximum restore size reached, decrease requested restores");
 					}
 					
@@ -393,10 +393,7 @@ public class BackupStorageLocalHandler implements BackupStorageHandler {
 				
 			restoreRequest.setCurrentStatus(RestoreStatus.Success);			
 			restoreRequest.setCompletedDateTime(new Date());
-			restoreRequest.setRestoreResultsURLs(new ArrayList<String>());
-			
-			//TODO Change to URL format
-			restoreRequest.getRestoreResultsURLs().add(finalRestoreFileName);
+			restoreRequest.setRestoreResultURL(finalRestoreFileName);
 			
 			restoreSvc.updateRestoreRequest(restoreRequest);
 			

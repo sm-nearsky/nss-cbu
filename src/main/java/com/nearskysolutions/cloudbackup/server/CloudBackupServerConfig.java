@@ -21,59 +21,14 @@ import org.springframework.stereotype.Component;
 @PropertySource({"classpath:persistence-${env}.properties",	
 					"classpath:application-server-${env}.properties"})
 public class CloudBackupServerConfig {
-
-	private String repoType;
-	private String repoLoc;
-	private String repoKey;
-	private int trackerHandlerThreadCount;
-	private int singlePacketHandlerThreadCount;
-	private int restoreRequestHandlerThreadCount;
-
-	public String getRepoType() {
-		return repoType;
-	}
-
-	public void setRepoType(String repoType) {
-		this.repoType = repoType;
-	}
-
-	public String getRepoLoc() {
-		return repoLoc;
-	}
-
-	public void setRepoLoc(String repoLoc) {
-		this.repoLoc = repoLoc;
-	}
-
-	public String getRepoKey() {
-		return repoKey;
-	}
-
-	public void setRepoKey(String repoKey) {
-		this.repoKey = repoKey;
-	}
 	
-	public int getTrackerHandlerThreadCount() {
-		return trackerHandlerThreadCount;
+	private int maxRestoreSize;
+		
+	public int getMaxRestoreSize() {
+		return maxRestoreSize;
 	}
 
-	public void setTrackerHandlerThreadCount(int trackerHandlerThreadCount) {
-		this.trackerHandlerThreadCount = trackerHandlerThreadCount;
-	}
-	
-	public int getSinglePacketHandlerThreadCount() {
-		return singlePacketHandlerThreadCount;
-	}
-
-	public void setSinglePacketHandlerThreadCount(int singlePacketHandlerThreadCount) {
-		this.singlePacketHandlerThreadCount = singlePacketHandlerThreadCount;
-	}
-
-	public int getRestoreRequestHandlerThreadCount() {
-		return restoreRequestHandlerThreadCount;
-	}
-
-	public void setRestoreRequestHandlerThreadCount(int restoreRequestHandlerThreadCount) {
-		this.restoreRequestHandlerThreadCount = restoreRequestHandlerThreadCount;
+	public void setMaxRestoreSize(int maxRestoreSize) {
+		this.maxRestoreSize = maxRestoreSize;
 	}
 }

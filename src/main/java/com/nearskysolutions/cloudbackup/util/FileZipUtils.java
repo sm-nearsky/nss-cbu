@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -15,6 +16,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.microsoft.azure.storage.blob.BlobOutputStream;
 
 public class FileZipUtils {
 
@@ -129,7 +132,7 @@ public class FileZipUtils {
     		logger.info("Closing zip stream for provided output");
     		
     		if( null != zos ) {
-    			zos.close();
+    			zos.finish();
     		}
     	}
     	
@@ -168,13 +171,57 @@ public class FileZipUtils {
     		logger.info("Closing zip stream for provided output");
     		
     		if( null != zos ) {
-    			zos.close();
+   				zos.finish();
     		}
     	}
     		
     	logger.info(String.format("Zip complete to output stream with entry name: %s", entryName));
     	    	
     	logger.trace(String.format("Completed FileZipUtils.CreateZipOutputToStream(InputStream inputStream, OutputStream outputStream, String entryName): entryName: %s", entryName));
+	}
+
+	public static void CreateCompositeZipArchive(Enumeration<ZipEntryHelper> zipEntryHandler, OutputStream outputStream) throws Exception {
+		
+		if( null == zipEntryHandler ) { 
+			throw new Exception("zipEntryHandler reference can't be null");
+		}
+		
+		if( null == outputStream ) { 
+			throw new Exception("outputStream reference can't be null");
+		}
+		
+		logger.trace("Starting FileZipUtils.CreateCompositeZipArchive(Enumeration<ZipEntryHelper> zipEntryHandler, OutputStream outputStream)");
+		
+		if( false == zipEntryHandler.hasMoreElements() ) {
+			logger.info("No elements found in zip handler");
+		} else {
+			ZipOutputStream zos = null;
+						
+			try {
+			
+				zos = new ZipOutputStream(outputStream);
+			
+				while(zipEntryHandler.hasMoreElements()) {
+					try(ZipEntryHelper helper = zipEntryHandler.nextElement()) {
+						logger.info(String.format("Sending entry: %s to be saved in zip archive", helper.getEntryName()));
+
+						FileZipUtils.addToZipFile(helper.getInputStream(), zos, helper.getEntryName());						
+						
+						logger.info("Completed append to zip archive");
+					}
+				}
+				
+				logger.info("Composite write complete to zip archive");
+				
+			} finally {
+								
+				if(null != zos) {
+					zos.finish();											
+				}
+			}
+		}				
+    	
+    	logger.trace("Completed FileZipUtils.CreateCompositeZipArchive(Enumeration<ZipEntryHelper> zipEntryHandler, OutputStream outputStream)");
 	}
 
 	private static void CreateZipOutputToZos(File sourceFile, String sourceDirIgnore, ZipOutputStream zos) throws Exception {
@@ -401,7 +448,7 @@ public class FileZipUtils {
     			outputStream.write(buffer, 0, byteCount);
 			}
     		
-    		logger.info("Completd uncompressed output from zip input");
+    		logger.info("Completed uncompressed output from zip input");
     		
     	} finally {
     		    		
@@ -418,4 +465,5 @@ public class FileZipUtils {
     	
     	logger.trace("Completed FileZipUtils.WriteZipInputToOutput(InputStream inputStream, OutputStream outputStream)");
 	}
+	
 }

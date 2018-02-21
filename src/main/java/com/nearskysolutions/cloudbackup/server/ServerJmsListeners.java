@@ -199,6 +199,7 @@ public class ServerJmsListeners {
 	@JmsListener(destination = "nssCbuClientUpdates.d/$DeadLetterQueue", concurrency="1-5")
 	@JmsListener(destination = "nssCbuClientUpdates.e/$DeadLetterQueue", concurrency="1-5")
 	@JmsListener(destination = "nssCbuClientUpdates.f/$DeadLetterQueue", concurrency="1-5")
+	@JmsListener(destination = "nssCbuClientUpdates.x/$DeadLetterQueue", concurrency="1-5")
 	public void receiveDLQMessageA(String message) {
 		logger.trace(String.format("Discarding dead letter message: %s", message.substring(0, Math.min(message.length(), 250))));		
 	}

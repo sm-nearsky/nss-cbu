@@ -464,15 +464,11 @@ public class BackupAdminServiceTest {
 			assertEquals(compareRequest.getCompletedDateTime(), testRequest.getCompletedDateTime());
 			assertEquals(compareRequest.getErrorMessage(), testRequest.getErrorMessage());	
 			
-			if( null == testRequest.getRestoreResultsURLs() ) {			
-				assertNull(compareRequest.getRestoreResultsURLs());			
+			if( null == testRequest.getRestoreResultURL() ) {			
+				assertNull(compareRequest.getRestoreResultURL());			
 			} else {
-				assertNotNull(compareRequest.getRestoreResultsURLs());
-				assertEquals(testRequest.getRestoreResultsURLs().size(), compareRequest.getRestoreResultsURLs().size());
-				
-				for(int i = 0; i < testRequest.getRestoreResultsURLs().size(); i++) {
-					assertEquals(testRequest.getRestoreResultsURLs().get(i), compareRequest.getRestoreResultsURLs().get(i));
-				}	
+				assertNotNull(compareRequest.getRestoreResultURL());
+				assertEquals(testRequest.getRestoreResultURL(), compareRequest.getRestoreResultURL());					
 			}
 		}
 		

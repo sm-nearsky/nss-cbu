@@ -62,10 +62,8 @@ public class BackupRestoreRequest {
 	@Column(name="include_subdirectories")
 	private boolean includeSubdirectories;
 	
-	//@LazyCollection(LazyCollectionOption.FALSE)
-	@Fetch(FetchMode.SELECT)	
-	@ElementCollection(fetch = FetchType.EAGER)	
-	private List<String> restoreResultsURLs;
+	@Column(name="restore_result_url", length=1024)
+	private String restoreResultsURL;
 	
 	public enum NotifyType {
 		Email,
@@ -206,12 +204,12 @@ public class BackupRestoreRequest {
 		this.currentStatus = currentStatus;
 	}
 
-	public List<String> getRestoreResultsURLs() {
-		return restoreResultsURLs;
+	public String getRestoreResultURL() {
+		return restoreResultsURL;
 	}
 
-	public void setRestoreResultsURLs(List<String> restoreResultsURLs) {
-		this.restoreResultsURLs = restoreResultsURLs;
+	public void setRestoreResultURL(String restoreResultsURL) {
+		this.restoreResultsURL = restoreResultsURL;
 	}
 	
 	public List<UUID> getRequestedFileTrackerIDs() {

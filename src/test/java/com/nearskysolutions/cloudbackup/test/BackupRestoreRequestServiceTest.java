@@ -309,12 +309,8 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			
 			origRestoreRequest.setCompletedDateTime(cal.getTime());
 			
-			origRestoreRequest.setErrorMessage("new error");
-			
-			origRestoreRequest.setRestoreResultsURLs(new ArrayList<String>());
-			origRestoreRequest.getRestoreResultsURLs().add("New URL 1");
-			origRestoreRequest.getRestoreResultsURLs().add("New URL 2");
-			
+			origRestoreRequest.setErrorMessage("new error");			
+			origRestoreRequest.setRestoreResultURL("New URL 1");						
 			origRestoreRequest.setCurrentStatus(RestoreStatus.Success);	
 			
 			BackupRestoreRequest newRestoreRequest = restoreSvc.updateRestoreRequest(origRestoreRequest);
@@ -417,7 +413,7 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			assertNull(newRestoreRequest.getProcessingStartDateTime());
 			assertNull(newRestoreRequest.getCompletedDateTime());
 			assertNull(newRestoreRequest.getErrorMessage());
-			assertNull(newRestoreRequest.getRestoreResultsURLs());
+			assertNull(newRestoreRequest.getRestoreResultURL());
 		} else {
 			assertEquals(newRestoreRequest.getRequestID(), origRestoreRequest.getRequestID());
 			assertEquals(newRestoreRequest.getSubmittedDateTime(), origRestoreRequest.getSubmittedDateTime());
@@ -425,16 +421,11 @@ Logger logger = LoggerFactory.getLogger(BackupRestoreRequestServiceTest.class);
 			assertEquals(newRestoreRequest.getProcessingStartDateTime(), origRestoreRequest.getProcessingStartDateTime());
 			assertEquals(newRestoreRequest.getCurrentStatus(), origRestoreRequest.getCurrentStatus());
 			
-			if( null == origRestoreRequest.getRestoreResultsURLs() ) {
-				assertNull(newRestoreRequest.getRestoreResultsURLs());
+			if( null == origRestoreRequest.getRestoreResultURL() ) {
+				assertNull(newRestoreRequest.getRestoreResultURL());
 			} else {
-				assertNotNull(newRestoreRequest.getRestoreResultsURLs());
-				
-				assertEquals(newRestoreRequest.getRestoreResultsURLs().size(), origRestoreRequest.getRestoreResultsURLs().size());
-				
-				for(int i = 0; i < newRestoreRequest.getRestoreResultsURLs().size(); i++) {				
-					assertEquals(newRestoreRequest.getRestoreResultsURLs().get(i), origRestoreRequest.getRestoreResultsURLs().get(i));
-				}				
+				assertNotNull(newRestoreRequest.getRestoreResultURL());
+				assertEquals(newRestoreRequest.getRestoreResultURL(), origRestoreRequest.getRestoreResultURL());								
 			}
 		}		
 	}
