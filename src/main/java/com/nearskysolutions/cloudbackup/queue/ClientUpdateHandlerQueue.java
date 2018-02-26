@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.nearskysolutions.cloudbackup.client.CloudBackupClient;
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
@@ -19,7 +18,7 @@ import com.nearskysolutions.cloudbackup.util.JsonConverter;
 @Component
 public class ClientUpdateHandlerQueue {
 	
-	Logger logger = LoggerFactory.getLogger(CloudBackupClient.class);
+	Logger logger = LoggerFactory.getLogger(ClientUpdateHandlerQueue.class);
 	
 	@Autowired
 	private JmsHandler jmsHandler;

@@ -1,0 +1,27 @@
+BackupFileClient
+
+    {
+        "clientID": "64aae23a-7421-4011-8d89-94551b6cd6b7",
+        "clientName": "client 1",
+        "clientDescription": "desc 1",
+        "currentRepositoryType": "rep 1",
+        "currentRepositoryLocation": "loc 1",
+        "currentRepositoryKey": "key 1",
+        "directoryIncludes": [
+            "C:\\tmp\\backupfileset1",
+            "C:\\tmp\\backupfileset2"
+        ],
+        "createdDateTime": null
+    }
+
+
+BackupRestoreRequest
+{
+	"clientID":"64aae23a-7421-4011-8d89-94551b6cd6b7",
+	"submitterId":"test submitter1",
+	"requestedFileTrackerIDs":[100,101],
+	"notifyType":"None",
+	"notifyTarget":"test target 1",
+	"notifyParameter":"test parameter 1",
+	"includeSubdirectories":true
+}

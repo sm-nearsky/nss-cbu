@@ -1,0 +1,11 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.admin.CloudBackupAdminConfig",
+      "name": "com.nearskysolutions.cloudbackup.admin",
+      "type": "com.nearskysolutions.cloudbackup.admin.CloudBackupAdminConfig"
+    }
+  ],
+  "properties": []
+}

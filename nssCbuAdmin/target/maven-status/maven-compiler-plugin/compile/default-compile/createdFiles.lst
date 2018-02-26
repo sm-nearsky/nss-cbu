@@ -1,0 +1,4 @@
+com\nearskysolutions\cloudbackup\admin\CloudBackupAdmin.class
+com\nearskysolutions\cloudbackup\admin\AdminController.class
+com\nearskysolutions\cloudbackup\admin\CloudBackupAdminConfig.class
+META-INF\spring-configuration-metadata.json

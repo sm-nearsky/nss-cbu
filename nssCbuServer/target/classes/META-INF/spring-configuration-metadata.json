@@ -1,0 +1,18 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "name": "com.nearskysolutions.cloudbackup.server",
+      "type": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig"
+    }
+  ],
+  "properties": [
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.server.CloudBackupServerConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.server.max-restore-size",
+      "type": "java.lang.Integer"
+    }
+  ]
+}

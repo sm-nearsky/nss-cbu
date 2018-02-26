@@ -3,13 +3,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.nearskysolutions.cloudbackup</groupId>
-  <artifactId>NssCloudBackupSystem</artifactId>
+  <artifactId>nssCbuServer</artifactId>
   <version>1.3.0</version>
   <packaging>jar</packaging>
 
-  <name>NssCloudBackupSystem</name>
-  <url>http://maven.apache.org</url>
-
+  <name>nssCbuServer</name>
+  
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 <!-- start-class>com.nearskysolutions.cloudbackup.util.CloudBackupStartup</start-class> -->	
@@ -141,6 +140,11 @@
       <artifactId>azure-storage</artifactId>
       <version>4.2.0</version>
     </dependency>	
+    <dependency>
+		<groupId>com.nearskysolutions.cloudbackup</groupId>
+		<artifactId>NssCloudBackupSystem</artifactId>
+		<version>1.3.0</version>
+	</dependency>
   </dependencies>  
 
 	<build>
