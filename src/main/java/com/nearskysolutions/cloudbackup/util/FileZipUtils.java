@@ -65,7 +65,7 @@ public class FileZipUtils {
     		
     		FileZipUtils.CreateZipOutputToStream(sourceFile, sourceDirIgnore, fos);
     		
-    		logger.info(String.format("Zip complete for file/dir: ", sourceFile.getAbsolutePath()));
+    		logger.info(String.format("Zip complete for file/dir: %s", sourceFile.getAbsolutePath()));
     		    		    	   
     	} finally {
     		    		

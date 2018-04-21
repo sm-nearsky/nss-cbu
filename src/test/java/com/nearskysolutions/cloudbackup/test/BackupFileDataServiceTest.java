@@ -229,8 +229,7 @@ public class BackupFileDataServiceTest {
 																						bft2.getBackupRepositoryType(), 
 																						bft2.getBackupRepositoryLocation(), 
 																						bft2.getBackupRepositoryKey(), 
-																						bft2.getSourceDirectory(), 
-																						bft2.getFileName());
+																						bft2.getFileFullPath());
 			
 			assertNotNull(backupTrackers);
 			assertEquals(1, backupTrackers.size());

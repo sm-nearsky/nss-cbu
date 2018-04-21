@@ -14,6 +14,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket.FileAction;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker.BackupFileTrackerStatus;
 import com.nearskysolutions.cloudbackup.common.BackupRestoreRequest;
@@ -131,12 +132,24 @@ public class CloudBackupServer  implements CommandLineRunner {
 				throw new Exception(String.format("Backup file name mismatch for file tracker: %d", newTracker.getBackupFileTrackerID()));
 			}
 			
-			logger.info(String.format("Updating tracker record for client ID: %s, directory: %s, file: %s", 
+			logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 
 										newTracker.getClientID().toString(), 
 										newTracker.getSourceDirectory(), 
 										newTracker.getFileName()));	
 			
 			this.fileDataSvc.updateBackupFileTracker(newTracker);
+			
+			if(BackupFileTrackerStatus.Deleted == newTracker.getTrackerStatus()) {
+				this.backupStorageHandler.processBackupPacket(new BackupFileDataPacket(newTracker.getBackupFileTrackerID(),
+						newTracker.getClientID(),
+						  0,
+						   0,
+						   1,
+						   1,													   
+						   "",
+						   "",
+						   FileAction.Delete));
+			}
 						
 		} else {
 		
@@ -144,23 +157,16 @@ public class CloudBackupServer  implements CommandLineRunner {
 																							newTracker.getBackupRepositoryType(), 
 																							newTracker.getBackupRepositoryLocation(), 
 																							newTracker.getBackupRepositoryKey(), 
-																							newTracker.getSourceDirectory(), 
-																							newTracker.getFileName());
+																							newTracker.getFileFullPath());
 			
 			if( 1 < trackerFileList.size() ) {
 				
-				throw new Exception(String.format("Found more than one match for tracker with client ID: %s, directory: %s, file: %s", 
+				throw new Exception(String.format("Found more than one match for tracker with client ID: %s, file: %s", 
 													newTracker.getClientID().toString(), 
-													newTracker.getSourceDirectory(), 
-													newTracker.getFileName()));
+													newTracker.getFileFullPath()));
 			
 			}  else if(1 == trackerFileList.size()) {
 								
-				logger.info(String.format("Updating tracker record for tracker client ID: %s, directory: %s, file: %s",																
-											newTracker.getClientID().toString(), 
-											newTracker.getSourceDirectory(), 
-											newTracker.getFileName()));
-				
 				//Case where deleted file can be re-created before
 				//tracker purge
 				if( BackupFileTrackerStatus.Deleted == trackerFileList.get(0).getTrackerStatus() ) {
@@ -168,20 +174,44 @@ public class CloudBackupServer  implements CommandLineRunner {
 					//Delete tracker so a new one will be created
 					this.fileDataSvc.deleteBackupFileTracker(trackerFileList.get(0));
 					
-					newTracker.setBackupFileTrackerID(null);										
-				} else {
+					logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 
+							newTracker.getClientID().toString(), 
+							newTracker.getSourceDirectory(), 
+							newTracker.getFileName()));
+					
+					this.fileDataSvc.addBackupFileTracker(newTracker);
+				} else {					
+					logger.info(String.format("Updating tracker record for tracker client ID: %s, directory: %s, file: %s",																
+							newTracker.getClientID().toString(), 
+							newTracker.getSourceDirectory(), 
+							newTracker.getFileName()));
+					
 					//TODO Verify this works
-					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());					
+					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());
+					
+					this.fileDataSvc.updateBackupFileTracker(newTracker);
+					
+					if(BackupFileTrackerStatus.Deleted == newTracker.getTrackerStatus()) {
+						this.backupStorageHandler.processBackupPacket(new BackupFileDataPacket(newTracker.getBackupFileTrackerID(),
+								newTracker.getClientID(),
+								  0,
+								   0,
+								   1,
+								   1,													   
+								   "",
+								   "",
+								   FileAction.Delete));
+					}
 				}
 				
 			} else { //0 == trackerFileList.size()
 				logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 
 											newTracker.getClientID().toString(), 
 											newTracker.getSourceDirectory(), 
-											newTracker.getFileName()));
-			}
-			
-			this.fileDataSvc.addBackupFileTracker(newTracker);
+											newTracker.getFileName()));				
+				
+				this.fileDataSvc.addBackupFileTracker(newTracker);
+			}			
 		}			
 		
 		logger.trace(String.format("Completed CloudBackupServer.addOrUpdateFileTracker(BackupFileTracker newTracker): tracker ID=%s", newTracker.getBackupFileTrackerID()));

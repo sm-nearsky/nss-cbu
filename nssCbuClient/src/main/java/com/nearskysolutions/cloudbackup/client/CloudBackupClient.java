@@ -10,8 +10,6 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Dictionary;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -21,7 +19,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -54,7 +51,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private Date processingStopTime;
 	
-	private Dictionary<String, ThreadPoolExecutor> threadBank;
+	private ThreadPoolExecutor threadBank;
 	
 	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
 	
@@ -73,13 +70,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			this.processingStopTime = cal.getTime();
 			
-			this.threadBank = new Hashtable<String, ThreadPoolExecutor>();
-			
-			String threadNameChars = "abcdef1234567890x";
-			
-			for(int i = 0; i < threadNameChars.length(); i++) {
-				this.threadBank.put(threadNameChars.substring(i, i+1), (ThreadPoolExecutor) Executors.newFixedThreadPool(1));			
-			}
+			this.threadBank = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.max(1, cbcConfig.getThreadProcessCount()));
 			
 			this.scanAndSendBackups();
 		
@@ -142,7 +133,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 				BackupFileTracker tracker;
 				boolean isMoreTrackers = true;
 				int trackerListCurrentPage = 0;
-				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();
+				int trackerListPageSize = this.cbcConfig.getTrackerListPageSize();				
+				int maxProcessingHours = Math.max(12, cbcConfig.getMaxProcessingHours());
 								
 				//Collect all trackers from service
 				while(isMoreTrackers) {
@@ -182,7 +174,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 										
 										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
 										
-										this.sendPacketsForFile(tracker);
+										this.sendTrackerUpdate(tracker);										
 									}
 									
 								} else if( false == tracker.equalsFile(tracker.getFileReference()) ) {
@@ -192,34 +184,56 @@ public class CloudBackupClient  implements CommandLineRunner {
 										
 										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
 
-										this.sendPacketsForFile(tracker);
+										this.sendTrackerUpdate(tracker);
 									} else {									
 										logger.info(String.format("Found changes for file: %s", tracker.getFileReference().getAbsolutePath()));
 										
 										tracker.updateFileAttributes(tracker.getFileReference());						
-																				
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);				
+										
 										this.sendTrackerUpdate(tracker);
-	
-										this.sendPacketsForFile(tracker);										
 									}									
-								}	else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
-										     BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ||
-										     BackupFileTrackerStatus.Processing == tracker.getTrackerStatus()
-										    ) {
+								} else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
+										   BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ) {
+										     									
+									if( BackupFileTrackerStatus.Pending != tracker.getTrackerStatus() ) {										
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
+										
+										this.sendTrackerUpdate(tracker);
+									}
 									
-										if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
-											logger.info(String.format("Found restart state for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
-											
-											tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
-		
-											this.sendPacketsForFile(tracker);
-										} else {
-											//Send packets for each tracker needing update
-											//Note: this state is set after the server processes tracker updates		
-											logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
-												
-											this.sendPacketsForFile(tracker);
-										}
+									if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
+										logger.info(String.format("Found restart state for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
+										
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
+	
+										this.sendTrackerUpdate(tracker);										
+									} else {
+										//Send packets for each tracker needing update
+										//Note: this state is set after the server processes tracker updates		
+										logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
+										
+										this.sendPacketsForFile(tracker);
+									}
+								} else if(BackupFileTrackerStatus.Processing == tracker.getTrackerStatus()) {
+																	
+									
+									Calendar calCurrentTime = Calendar.getInstance();												
+									Calendar calLastReceivedTimeAdj = Calendar.getInstance();
+									
+									calLastReceivedTimeAdj.setTime(tracker.getLastStatusChange());
+									calLastReceivedTimeAdj.add(Calendar.HOUR, maxProcessingHours);
+									
+									//Use in testing to immediately retry
+									//calLastReceivedTimeAdj.setTime(new Date(calCurrentTime.getTime().getTime()-1000));
+																		
+									if( calLastReceivedTimeAdj.before(calCurrentTime) ) {										
+										//This update has to make it all the way through before
+										//sending packets due to multi-threading									
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);										
+										this.sendTrackerUpdate(tracker);						
+									}
 								}
 
 								if( BackupFileTrackerStatus.Deleted != tracker.getTrackerStatus() ) {
@@ -274,6 +288,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 																	 this.cbcConfig.getRepoKey(), 
 																	 trackerFile.getAbsolutePath());
 								
+				newTracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
+				
 				this.sendTrackerUpdate(newTracker);
 			}
 		}
@@ -284,13 +300,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			}
 		}
 	}
-	
-	private ThreadPoolExecutor getThreadPoolForTrackerRef(BackupFileTracker tracker ) {
-	
-		String threadBankKey = ( null == tracker.getBackupFileTrackerID() ) ? "x" : tracker.getBackupFileTrackerID().toString().substring(0, 1);
-		
-		return this.threadBank.get(threadBankKey);
-	}
+
 			
 	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
 		//Don't allow more messages if past maximum processing time
@@ -308,7 +318,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			this.messageProcessingCount.incrementAndGet();
 			
-			this.getThreadPoolForTrackerRef(tracker).submit(() -> {
+			this.threadBank.submit(() -> {
 				try {
 					this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);			
 				} catch(Exception ex) {
@@ -333,7 +343,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			this.messageProcessingCount.incrementAndGet();
 			
-			this.getThreadPoolForTrackerRef(fileTracker).submit(() -> {				
+			this.threadBank.submit(() -> {				
 				try {
 					this.handleSendPackets(fileTracker);
 				} catch(Exception ex) {
@@ -362,11 +372,10 @@ public class CloudBackupClient  implements CommandLineRunner {
 						
 			logger.info(String.format("Preparing packets for file or dir: %s", fileRef.getAbsolutePath()));
 					
-			BackupFileDataPacket dataPacket;
-			ByteArrayInputStream bais;
-			ByteArrayOutputStream baos;
+			BackupFileDataPacket dataPacket;			
 			int packetSize = this.cbcConfig.getFilePacketSize();
 			byte[] readBytes = new byte[packetSize];
+			String encodedBytes;
 			int byteCount;
 			long fileByteEndIndex;			
 			byte[] fileBytes;
@@ -435,34 +444,11 @@ public class CloudBackupClient  implements CommandLineRunner {
 						totalPackets += 1;
 					}
 				}
-				
+												
 				try(FileInputStream fis = new FileInputStream(fileRef)) {
 					
 					fileByteEndIndex = 0;					
 					currentPacket = 0;
-					
-					if(BackupFileTrackerStatus.Processing == fileTracker.getTrackerStatus() &&
-					   0 < fileTracker.getLastByteSent() && 
-					   fileTracker.equalsFile(fileRef)) {
-						logger.info(String.format("Tracker %s found in processing state, attempting to restart by skipping bytes", fileTracker.getBackupFileTrackerID().toString()));
-						
-						fileByteEndIndex = fis.skip(fileTracker.getLastByteSent());
-						
-						if( fileByteEndIndex == fileTracker.getLastByteSent() ) {
-							//NOTE: This assumes a consistent packet size between runs
-							currentPacket = (int)(fileTracker.getLastByteSent()/packetSize);
-							logger.info(String.format("Byte skip successful for tracker: %s, restarting processing at packet %d", 
-											fileTracker.getBackupFileTrackerID().toString(), currentPacket));
-						} else {
-							logger.error(String.format("Invalid skip bytes for file: %s, marking tracker for retry.", fileTracker.getFileFullPath()));
-							
-							fileTracker.setTrackerStatus(BackupFileTrackerStatus.Retry);
-							fileTracker.setLastStatusChange(new Date());
-							this.sendTrackerUpdate(fileTracker);
-							
-							return;
-						}
-					}
 					
 					while(fileByteEndIndex < fileRef.length()) {
 						
@@ -478,25 +464,25 @@ public class CloudBackupClient  implements CommandLineRunner {
 							System.arraycopy(readBytes, 0, fileBytes, 0, byteCount);
 						}
 						
-						bais = new ByteArrayInputStream(fileBytes);
-						baos = new ByteArrayOutputStream();
+						try(ByteArrayInputStream bais = new ByteArrayInputStream(fileBytes)) {
+							try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 																
-						FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), fileByteEndIndex-byteCount, fileByteEndIndex));
+								FileZipUtils.CreateZipOutputToStream(bais, baos, String.format("%s_%d-%d", fileTracker.getFileName(), fileByteEndIndex-byteCount, fileByteEndIndex));
 						
-						bais.close();
-						baos.close();
+								logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), fileByteEndIndex));
+						        
+						        //Convert bytes to base64
+								logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), fileByteEndIndex));
+								
+								encodedBytes = Base64.getEncoder().encodeToString(baos.toByteArray());													
+							}
+						}						
 						
-						logger.info(String.format("Completed writing %d bytes to output stream for fileRef: %s with index: %d", byteCount, fileTracker.getFileName(), fileByteEndIndex));
-				        
-				        //Convert bytes to base64
-						logger.info(String.format("Converting file bytes to base 64 for fileRef: %s with index: %d", fileTracker.getFileName(), fileByteEndIndex));
-						
-						String encodedBytes = Base64.getEncoder().encodeToString(baos.toByteArray());
-						currentPacket += 1;
+						currentPacket += 1;	
 						
 						dataPacket = new BackupFileDataPacket(fileTracker.getBackupFileTrackerID(),
 																   cbcConfig.getClientId(),
-																   encodedBytes.length(),
+																   byteCount,
 																   fileByteEndIndex,
 																   currentPacket,
 																   totalPackets,															   															   

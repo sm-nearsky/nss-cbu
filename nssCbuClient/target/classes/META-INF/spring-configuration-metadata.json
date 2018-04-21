@@ -43,6 +43,12 @@
     {
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
       "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.client.max-processing-hours",
+      "type": "java.lang.Integer"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "defaultValue": 0,
       "name": "com.nearskysolutions.cloudbackup.client.max-processing-minutes",
       "type": "java.lang.Integer"
     },
@@ -78,6 +84,12 @@
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
       "name": "com.nearskysolutions.cloudbackup.client.repo-type",
       "type": "java.lang.String"
+    },
+    {
+      "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",
+      "defaultValue": 0,
+      "name": "com.nearskysolutions.cloudbackup.client.thread-process-count",
+      "type": "java.lang.Integer"
     },
     {
       "sourceType": "com.nearskysolutions.cloudbackup.client.CloudBackupClientConfig",

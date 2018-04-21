@@ -1,12 +1,17 @@
 package com.nearskysolutions.cloudbackup.data;
 
+import java.sql.Date;
 import java.util.List;
 import java.util.UUID;
 
+import javax.persistence.NamedQuery;
+
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
@@ -39,6 +44,7 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 	@Transactional(readOnly=true)
 	List<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID);
 	
+	
 	@Query("SELECT t FROM BackupFileTracker t " 
 			+ "WHERE "
 			+ "t.clientID = :clientID "
@@ -47,22 +53,20 @@ public interface BackupFileTrackerRepository extends PagingAndSortingRepository<
 			)
 	@Transactional(readOnly=true)
 	Page<BackupFileTracker> findByClientIDAndIsFileDeletedFalse(@Param("clientID") UUID clientID, Pageable pageable);
-	
+		
 	@Query("SELECT t FROM BackupFileTracker t " 
 			+ "WHERE "
 			+ "t.clientID = :clientID "
 			+ "AND LOWER(t.backupRepositoryType) = LOWER(:backupRepositoryType) "
 			+ "AND LOWER(t.backupRepositoryLocation) = LOWER(:backupRepositoryLocation) "
-			+ "AND LOWER(t.backupRepositoryKey) = LOWER(:backupRepositoryKey) "
-			+ "AND LOWER(t.sourceDirectory) = LOWER(:sourceDirectory) "
-			+ "AND LOWER(t.fileName) = LOWER(:fileName) "
-		    + "ORDER BY t.fileFullPath"
+			+ "AND LOWER(t.backupRepositoryKey) = LOWER(:backupRepositoryKey) "			
+			+ "AND LOWER(t.fileFullPath) = LOWER(:fileFullPath) "		    
 			)
 	@Transactional(readOnly=true)
 	List<BackupFileTracker> findMatchingTrackers(@Param("clientID") UUID clientID,
 												 @Param("backupRepositoryType") String backupRepositoryType,
 												 @Param("backupRepositoryLocation") String backupRepositoryLocation,
-												 @Param("backupRepositoryKey") String backupRepositoryKey,
-												 @Param("sourceDirectory") String sourceDirectory,
-												 @Param("fileName") String fileName);
+												 @Param("backupRepositoryKey") String backupRepositoryKey,												 
+												 @Param("fileFullPath") String fileFullPath);
+
 }

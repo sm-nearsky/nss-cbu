@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -46,9 +45,8 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 																fileTracker.getClientID(),
 																fileTracker.getBackupRepositoryType(),
 																fileTracker.getBackupRepositoryLocation(),																
-																fileTracker.getBackupRepositoryKey(),
-																fileTracker.getSourceDirectory(),
-																fileTracker.getFileName());
+																fileTracker.getBackupRepositoryKey(),																
+																fileTracker.getFileFullPath());
 				
 		if( null != otherTrackers && otherTrackers.size() > 0) {
 			if( otherTrackers.size() == 1 && BackupFileTrackerStatus.Deleted == otherTrackers.get(0).getTrackerStatus()) {
@@ -58,6 +56,8 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 				throw new Exception(String.format("Unable to create tracker for existing file: %s", fileTracker.toString()));
 			}
 		}
+		
+		logger.info(String.format("Adding backup tracker for client ID: %s, file name: %s", fileTracker.getClientID().toString(), fileTracker.getFileFullPath()));
 			
 		fileTracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
 		fileTracker.setLastStatusChange(new Date());
@@ -93,12 +93,16 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new Exception("Backup file tracker ID not found");
 		}		
 		
+//		if( BackupFileTrackerStatus.Unknown == fileTracker.getTrackerStatus() ) {
+//			throw new Exception("Unknown file status for tracker: " + fileTracker.getBackupFileTrackerID().toString());
+//		}
+		
 		trackerRepo.save(fileTracker);
 		
 		logger.info("Backup file tracker data updated in repository");	
 		
 	}
-	
+		
 	@Override
 	@CacheEvict(key = "#fileTracker.backupFileTrackerID+'_'+#fileTracker.clientID")
 	public void deleteBackupFileTracker(BackupFileTracker fileTracker) throws Exception {
@@ -259,8 +263,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 														String backupRepositoryType,
 														String backupRepositoryLocation, 
 														String backupRepositoryKey, 
-														String sourceDirectory, 
-														String fileName) {
+														String fullFileName) {
 		
 		logger.trace("In BackupFileDataPacketServiceImpl.findMatchingTrackers(UUID clientIDUUID clientID, "+
 						"String backupRepositoryType,String backupRepositoryLocation,String backupRepositoryKey, "+ 
@@ -272,13 +275,7 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Client ID can't be null");
 		}
 		
-		if( sourceDirectory == null ) {
-			logger.error("Null Source directory passed as argument to BackupFileDataPacketServiceImpl.findMatchingTrackers");
-			
-			throw new NullPointerException("Source directory can't be null");
-		}
-		
-		if( fileName == null ) {
+		if( fullFileName == null ) {
 			logger.error("Null file name passed as argument to BackupFileDataPacketServiceImpl.findMatchingTrackers");
 			
 			throw new NullPointerException("File name can't be null");
@@ -286,11 +283,11 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 		
 		logger.info(String.format("Query for all BackupFileTracker instances for clientID=%s, "+
 									"backupRepositoryType=%s, backupRepositoryLocation=%s, backupRepositoryKey=%s, "+ 
-									"sourceDirectory=%s, fileName=%s", 
+									"fullFileName=%s", 
 									clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey,
-									sourceDirectory, fileName));
+									fullFileName));
 				
-		List<BackupFileTracker> retVal = trackerRepo.findMatchingTrackers(clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey, sourceDirectory, fileName);				
+		List<BackupFileTracker> retVal = trackerRepo.findMatchingTrackers(clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey, fullFileName);				
 					
 		logger.info(String.format("Query found %d backup file trackers", retVal.size()));
 		

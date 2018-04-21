@@ -4,7 +4,7 @@
 
   <groupId>com.nearskysolutions.cloudbackup</groupId>
   <artifactId>NssCloudBackupSystem</artifactId>
-  <version>1.3.0</version>
+  <version>1.3.2</version>
   <packaging>jar</packaging>
 
   <name>NssCloudBackupSystem</name>
@@ -141,6 +141,11 @@
       <artifactId>azure-storage</artifactId>
       <version>4.2.0</version>
     </dependency>	
+    <dependency>
+	  <groupId>com.google.guava</groupId>
+	  <artifactId>guava</artifactId>
+	  <version>24.1-jre</version>
+	</dependency>
   </dependencies>  
 
 	<build>

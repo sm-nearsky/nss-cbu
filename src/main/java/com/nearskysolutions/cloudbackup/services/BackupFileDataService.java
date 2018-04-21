@@ -29,6 +29,5 @@ public interface BackupFileDataService {
 													String backupRepositoryType, 
 													String backupRepositoryLocation,
 			 										String backupRepositoryKey, 
-			 										String sourceDirectory, 
-			 										String fileName);
+			 										String fullFileName);	
 }

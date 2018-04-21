@@ -64,10 +64,7 @@ public class BackupFileTracker {
 		
 	@Column(name="last_status_change_datetime", nullable=true)
 	private Date lastStatusChange;
-		
-	@Column(name="last_byte_sent")
-	private Long lastByteSent; 
-	
+			
 	public enum BackupFileTrackerStatus {
 		Pending,
 		Processing,
@@ -248,28 +245,23 @@ public class BackupFileTracker {
 		this.lastStatusChange = lastStatusChange;
 	}
 	
+	public Date getLastBytesReceived() {
+		return lastStatusChange;
+	}
+	
 	public String getFileFullPath() {
 		return fileFullPath;
-	}
-
-	public Long getLastByteSent() {
-		return lastByteSent;
-	}
-
-	public void setLastByteSent(Long lastByteSent) {
-		this.lastByteSent = lastByteSent;
 	}
 	
 	@Override
 	public String toString() {
 		
 		return String.format("BackupFileTracker[clientID=%s, backupRepositoryType=%s, backupRepositoryLocation=%s, " +
-								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, lastByteSent=%d,"+
+								"backupRepositoryKey=%s, fileName=%s, fileFullPath=%s; sourceDirectory=%s, "+
 								"trackerStatus=%s, lastError=%s, lastStatusChange=%s, fileAttributes=%s]",
 								clientID, backupRepositoryType,	backupRepositoryLocation, backupRepositoryKey,
-								fileName, fileFullPath, sourceDirectory, lastByteSent, trackerStatus.toString(), lastError, 
-								lastStatusChange,fileAttributes);
-		
+								fileName, fileFullPath, sourceDirectory, trackerStatus.toString(), 
+								lastError, lastStatusChange,fileAttributes);		
 	}
 
 	public boolean equalsFile(File compareFile) throws IOException {

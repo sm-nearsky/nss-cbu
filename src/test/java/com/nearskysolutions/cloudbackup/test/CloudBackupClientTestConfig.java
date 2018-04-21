@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @PropertySource({"classpath:persistence-${env}.properties",
 				 "classpath:application-client-${env}.properties"})//,				 
 				 //"classpath:application-server.properties"})
-@ImportResource("classpath:bean-client-config.xml")
 @ComponentScan(basePackages={"com.nearskysolutions.cloudbackup.client",
 				 			"com.nearskysolutions.cloudbackup.services",
 				 			"com.nearskysolutions.cloudbackup.admin",

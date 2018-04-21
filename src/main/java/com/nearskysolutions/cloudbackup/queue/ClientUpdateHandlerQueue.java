@@ -1,6 +1,7 @@
 package com.nearskysolutions.cloudbackup.queue;
 
 import java.util.Date;
+import java.util.Hashtable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,14 +61,14 @@ public class ClientUpdateHandlerQueue {
 		
 		logger.trace("Completed ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 	}
-	
+		
 	public void sendBackupFilePacket(BackupFileDataPacket filePacket) throws Exception {
 		
 		logger.trace("In ClientUpdateHandlerLocalQueue.sendFileTrackerUpdate(BackupFileTracker fileTracker)");
 		
 		if(null == filePacket) {
 			throw new Exception("filePacket can't be null");
-		}
+		}	
 		
 		sendJmsMessageToQueue(ClientUpdateMessageType.FilePacket, filePacket.getFileTrackerID().toString(), filePacket);
 			

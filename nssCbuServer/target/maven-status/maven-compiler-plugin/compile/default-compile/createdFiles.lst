@@ -1,9 +1,10 @@
+com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase.class
 com\nearskysolutions\cloudbackup\server\CloudBackupServer.class
 com\nearskysolutions\cloudbackup\server\BackupStorageAzureHandler.class
+com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase$2.class
 META-INF\spring-configuration-metadata.json
+com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase$1.class
 com\nearskysolutions\cloudbackup\server\CloudBackupServerConfig.class
 com\nearskysolutions\cloudbackup\server\BackupStorageLocalHandler.class
-com\nearskysolutions\cloudbackup\server\BackupStorageLocalHandler$1.class
-com\nearskysolutions\cloudbackup\server\BackupStorageAzureHandler$1.class
 com\nearskysolutions\cloudbackup\server\ServerJmsListeners.class
 com\nearskysolutions\cloudbackup\server\ServerJmsListeners$1.class

@@ -1,8 +1,19 @@
 package com.nearskysolutions.cloudbackup.queue;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Hashtable;
 
+import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 
 import org.apache.qpid.jms.JmsConnectionFactory;
 import org.slf4j.Logger;
@@ -15,6 +26,7 @@ import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
 import org.springframework.stereotype.Component;
 
 import com.nearskysolutions.cloudbackup.util.JsonConverter;
@@ -37,9 +49,10 @@ public class JmsHandler {
 			throw new Exception("obj argument can't be null");
 		}
 				
-		String queueSelection = String.format("%s.%s", 
-									destination, ((null != messageObjectKey && messageObjectKey.length() > 0) ? messageObjectKey.substring(0,1) : "x"));
-		
+		//TODO: Clean up
+//		String queueSelection = String.format("%s.%s", 
+//									destination, ((null != messageObjectKey && messageObjectKey.length() > 0) ? messageObjectKey.substring(0,1) : "x"));
+		String queueSelection = destination;
 		String message = JsonConverter.ConvertObjectToJson(obj);
 		int numRetries = (bUseRetry ? 5 : 0);
 		int retryMultiplier = 1;
@@ -51,6 +64,17 @@ public class JmsHandler {
 			try {
 				
 				this.jmsTemplate.convertAndSend(queueSelection, message);
+				
+//				this.jmsTemplate.send(queueSelection, new MessageCreator() {					
+//					@Override
+//					public Message createMessage(Session session) throws JMSException {
+//			        	  TextMessage textMessage = session.createTextMessage();
+//   						  textMessage.setStringProperty("JMSXGroupID", queueSelection);
+//						  textMessage.setText(message);
+//			        	  
+//			              return session.createTextMessage(message);
+//			          }
+//			      });
 				
 				numRetries = 0;
 				
@@ -82,7 +106,10 @@ public class JmsHandler {
     
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
-        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();        
+        DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();  
+//        returnValue.setSessionTransacted(false);
+//        returnValue.setSessionAcknowledgeMode(Session.CLIENT_ACKNOWLEDGE);
+        
         returnValue.setConnectionFactory(connectionFactory);
 
         return returnValue;

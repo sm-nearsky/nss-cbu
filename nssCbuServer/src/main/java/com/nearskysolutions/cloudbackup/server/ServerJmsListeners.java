@@ -20,8 +20,9 @@ public class ServerJmsListeners {
 	
 	@Autowired
 	private CloudBackupServer cloudBackupServer;
-			
-	private void processMessage(String message) {
+	
+	@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-10")
+	public void receiveMessage(String message) {
 
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
 								
@@ -62,145 +63,11 @@ public class ServerJmsListeners {
 		}
 		
 		logger.trace("Completed CloudBackupServer.receiveMessage(String message)");
-    }	
+    }
 
-	@JmsListener(destination = "nssCbuClientUpdates.0", concurrency="1-1")
-	public void receiveMessage0(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.0 channel"));
-		
-		this.processMessage(message);				
-	}
-		
-	@JmsListener(destination = "nssCbuClientUpdates.1", concurrency="1-1")
-	public void receiveMessage1(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.1 channel"));
-		
-		this.processMessage(message);				
-	}
-		
-	@JmsListener(destination = "nssCbuClientUpdates.2", concurrency="1-1")
-	public void receiveMessage2(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.2 channel"));
-		
-		this.processMessage(message);				
-	}
-		 
-	@JmsListener(destination = "nssCbuClientUpdates.3", concurrency="1-1")
-	public void receiveMessage3(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.3 channel"));
-		
-		this.processMessage(message);				
-	}
-			
-	@JmsListener(destination = "nssCbuClientUpdates.4", concurrency="1-1")
-	public void receiveMessage4(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.4 channel"));
-		
-		this.processMessage(message);				
-	}
-		
-	@JmsListener(destination = "nssCbuClientUpdates.5", concurrency="1-1")
-	public void receiveMessage5(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.5 channel"));
-		
-		this.processMessage(message);				
-	}
-		
-	@JmsListener(destination = "nssCbuClientUpdates.6", concurrency="1-1")
-	public void receiveMessage6(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.6 channel"));
-		
-		this.processMessage(message);				
-	}
-		
-	@JmsListener(destination = "nssCbuClientUpdates.7", concurrency="1-1")
-	public void receiveMessage7(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.7 channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.8", concurrency="1-1")
-	public void receiveMessage8(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.8 channel"));
-		
-		this.processMessage(message);				
-	}
-			
-	@JmsListener(destination = "nssCbuClientUpdates.9", concurrency="1-1")
-	public void receiveMessage9(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.9 channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.a", concurrency="1-1")
-	public void receiveMessageA(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.a channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.b", concurrency="1-1")
-	public void receiveMessageB(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.b channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.c", concurrency="1-1")
-	public void receiveMessageC(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.c channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.d", concurrency="1-1")
-	public void receiveMessageD(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.d channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.e", concurrency="1-1")
-	public void receiveMessageE(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.e channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.f", concurrency="1-1")
-	public void receiveMessageF(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.f channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.x", concurrency="1-1")
-	public void receiveMessageX(String message) {
-		logger.trace(String.format("Received message on nssCbuClientUpdates.x channel"));
-		
-		this.processMessage(message);				
-	}
-	
-	@JmsListener(destination = "nssCbuClientUpdates.0/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.1/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.2/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.3/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.4/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.5/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.6/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.7/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.8/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.9/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.a/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.b/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.c/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.d/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.e/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.f/$DeadLetterQueue", concurrency="1-5")
-	@JmsListener(destination = "nssCbuClientUpdates.x/$DeadLetterQueue", concurrency="1-5")
-	public void receiveDLQMessageA(String message) {
+	@JmsListener(destination = "nssCbuClientUpdates/$DeadLetterQueue", concurrency="1-5")
+	public void receiveDLQMessage(String message) {
 		logger.trace(String.format("Discarding dead letter message: %s", message.substring(0, Math.min(message.length(), 250))));		
 	}
+	
 }
