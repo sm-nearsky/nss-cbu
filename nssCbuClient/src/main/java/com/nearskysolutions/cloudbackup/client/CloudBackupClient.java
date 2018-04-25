@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -67,10 +68,11 @@ public class CloudBackupClient  implements CommandLineRunner {
 			} else {
 				cal.add(Calendar.MINUTE, 180);
 			}
-			
+		
 			this.processingStopTime = cal.getTime();
-			
+					
 			this.threadBank = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.max(1, cbcConfig.getThreadProcessCount()));
+			this.threadBank.setKeepAliveTime(2, TimeUnit.SECONDS);
 			
 			this.scanAndSendBackups();
 		
@@ -303,57 +305,56 @@ public class CloudBackupClient  implements CommandLineRunner {
 
 			
 	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
-		//Don't allow more messages if past maximum processing time
-		Date dtNow = new Date();
+				
+		this.messageProcessingCount.incrementAndGet();
 		
-		if( dtNow.after(this.processingStopTime) ) {
-			logger.info(String.format("Past max run time of %d minutes, discarding update for file tracker ID: %s", 
-										this.cbcConfig.getMaxProcessingMinutes(), 
-										(tracker.getBackupFileTrackerID() != null ? tracker.getBackupFileTrackerID().toString() : "null")));			
-		} else {
-			//Note: Don't need process count for tracker updates because these currently
-			//      all happen on the main thread.  Keeping count to allow for threading option.
-			logger.info(String.format("Sending tracker to queue for file: %s, newTracker=%s", 
-							tracker.getFileReference().getAbsolutePath(), (null == tracker.getBackupFileTrackerID())));
-			
-			this.messageProcessingCount.incrementAndGet();
-			
-			this.threadBank.submit(() -> {
-				try {
-					this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);			
-				} catch(Exception ex) {
-					logger.error("Error in tracker send: ", ex);
-				} finally {
-					this.messageProcessingCount.decrementAndGet();
+		this.threadBank.submit(() -> {						
+			try {
+				//Don't allow more messages if past maximum processing time
+				Date dtNow = new Date();
+				
+				if( dtNow.after(this.processingStopTime) ) {
+					logger.info(String.format("Past max run time of %d minutes, discarding tracker update send for file tracker ID: %s", 
+												this.cbcConfig.getMaxProcessingMinutes(), 
+												tracker.getBackupFileTrackerID().toString()));	
+				} else {	
+					this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);							   
 				}
-			    return null;
-			});							
-		}
+			
+			} catch(Exception ex) {
+				logger.error("Error in tracker send: ", ex);
+			} finally {
+				this.messageProcessingCount.decrementAndGet();
+			}
+			
+			return null;
+		});		
 	}
 	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
-		//Don't allow more messages if past maximum processing time
-		Date dtNow = new Date();
+			
+		this.messageProcessingCount.incrementAndGet();
 		
-		if( dtNow.after(this.processingStopTime) ) {
-			logger.info(String.format("Past max run time of %d minutes, discarding packet send for file tracker ID: %s", 
-										this.cbcConfig.getMaxProcessingMinutes(), 
-										fileTracker.getBackupFileTrackerID().toString()));			
-		} else {
+		this.threadBank.submit(() -> {	
+			try {
+			//Don't allow more messages if past maximum processing time
+				Date dtNow = new Date();
 			
-			this.messageProcessingCount.incrementAndGet();
-			
-			this.threadBank.submit(() -> {				
-				try {
-					this.handleSendPackets(fileTracker);
-				} catch(Exception ex) {
-					logger.error("Error in packet send: ", ex);
-				} finally {
-					this.messageProcessingCount.decrementAndGet();
+				if( dtNow.after(this.processingStopTime) ) {
+					logger.info(String.format("Past max run time of %d minutes, discarding packet send for file tracker ID: %s", 
+												this.cbcConfig.getMaxProcessingMinutes(), 
+												fileTracker.getBackupFileTrackerID().toString()));	
+				} else {	
+					this.handleSendPackets(fileTracker);						   
 				}
-			    return null;
-			});			
-		}
+			} catch(Exception ex) {
+				logger.error("Error in packet send: ", ex);
+			} finally {
+				this.messageProcessingCount.decrementAndGet();
+			}	
+			return null;
+		});			
+		
 	}
 	
 	private void handleSendPackets(BackupFileTracker fileTracker) throws Exception {

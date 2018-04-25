@@ -21,7 +21,7 @@ public class ServerJmsListeners {
 	@Autowired
 	private CloudBackupServer cloudBackupServer;
 	
-	@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-10")
+	@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-30")
 	public void receiveMessage(String message) {
 
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");
