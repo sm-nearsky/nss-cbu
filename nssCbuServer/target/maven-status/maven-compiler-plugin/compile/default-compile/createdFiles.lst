@@ -1,4 +1,5 @@
 com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase.class
+com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase$3.class
 com\nearskysolutions\cloudbackup\server\CloudBackupServer.class
 com\nearskysolutions\cloudbackup\server\BackupStorageAzureHandler.class
 com\nearskysolutions\cloudbackup\server\BackupStorageHandlerBase$2.class

@@ -7,7 +7,7 @@
   </appender>
 
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>/tmp/logFile.log</file>
+    <file>/tmp/logFileServer.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- daily rollover -->
       <fileNamePattern>logFile.%d{yyyy-MM-dd}.log</fileNamePattern>
@@ -29,6 +29,7 @@
   <logger name="com.nearskysolutions.cloudbackup.server" level="INFO" />
   
   <root level="info">
+   <!-- <appender-ref ref="FILE" /> -->
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>

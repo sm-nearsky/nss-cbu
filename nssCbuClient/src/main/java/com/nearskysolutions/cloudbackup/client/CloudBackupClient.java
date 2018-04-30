@@ -54,7 +54,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private ThreadPoolExecutor threadBank;
 	
-	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
+//	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
 	
 	public void run(String... args) {
 	
@@ -75,11 +75,15 @@ public class CloudBackupClient  implements CommandLineRunner {
 			this.threadBank.setKeepAliveTime(2, TimeUnit.SECONDS);
 			
 			this.scanAndSendBackups();
-		
-			while(0 < messageProcessingCount.get()) { 
-				Thread.sleep(500);
-			}
+//		
+//			while(0 < messageProcessingCount.get()) { 
+//				Thread.sleep(500);
+//			}
 			
+			this.threadBank.shutdown();
+	        while (!this.threadBank.isTerminated()) {
+	        }
+	        
 		} catch (Exception ex) {
 			logger.error("Unable to process backups due to exception", ex);
 		}			
@@ -306,7 +310,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
 				
-		this.messageProcessingCount.incrementAndGet();
+//		this.messageProcessingCount.incrementAndGet();
 		
 		this.threadBank.submit(() -> {						
 			try {
@@ -323,9 +327,10 @@ public class CloudBackupClient  implements CommandLineRunner {
 			
 			} catch(Exception ex) {
 				logger.error("Error in tracker send: ", ex);
-			} finally {
-				this.messageProcessingCount.decrementAndGet();
-			}
+			} 
+//			finally {
+//				this.messageProcessingCount.decrementAndGet();
+//			}
 			
 			return null;
 		});		
@@ -333,7 +338,7 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
 			
-		this.messageProcessingCount.incrementAndGet();
+//		this.messageProcessingCount.incrementAndGet();
 		
 		this.threadBank.submit(() -> {	
 			try {
@@ -349,9 +354,10 @@ public class CloudBackupClient  implements CommandLineRunner {
 				}
 			} catch(Exception ex) {
 				logger.error("Error in packet send: ", ex);
-			} finally {
-				this.messageProcessingCount.decrementAndGet();
-			}	
+			} 
+//			finally {
+//				this.messageProcessingCount.decrementAndGet();
+//			}	
 			return null;
 		});			
 		

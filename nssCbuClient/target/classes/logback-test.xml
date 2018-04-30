@@ -7,7 +7,7 @@
   </appender>
 
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>/tmp/logFile.log</file>
+    <file>/tmp/logFileClient.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- daily rollover -->
       <fileNamePattern>logFile.%d{yyyy-MM-dd}.log</fileNamePattern>
@@ -30,6 +30,7 @@
   <!--  <logger name="org.apache.qpid.jms" level="trace" /> -->
   
   <root level="info">
+    <!--  <appender-ref ref="FILE" /> -->
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>

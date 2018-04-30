@@ -49,6 +49,7 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 	CloudBackupServerConfig cbsConfig;
 	
 	LoadingCache<UUID, Integer> packetIDCounts;	
+	LoadingCache<UUID, Boolean> trackerPacketsComplete;
 	int maxPacketCacheMinutes = 60;
 	
 	protected BackupStorageHandlerBase() {
@@ -61,6 +62,18 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 			            @Override
 			        	public Integer load(UUID key) {
 			            	return 0;
+			          }
+			        });
+		
+		//TODO Use different config for tracker complete timeout
+		trackerPacketsComplete = CacheBuilder.newBuilder()
+			    .concurrencyLevel(1)
+			    .expireAfterAccess(maxPacketCacheMinutes, TimeUnit.MINUTES)
+			    .build(
+			        new CacheLoader<UUID, Boolean>() {
+			            @Override
+			        	public Boolean load(UUID key) {
+			            	return false;
 			          }
 			        });
 	}
@@ -133,8 +146,15 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 					tracker = processFirstPacket(tracker.getBackupFileTrackerID(), tracker.getClientID());
 					
 				} else if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus()) {
-					throw new Exception(String.format("Invalid status for packet processing for tracker %s: status: %s",
+					
+					//Don't write status exception if already in error because we don't want to overwrite the 
+					//original message
+					if( BackupFileTrackerStatus.Error == tracker.getTrackerStatus()) {
+						return;
+					} else {
+						throw new Exception(String.format("Invalid status for packet processing for tracker %s: status: %s",
 							tracker.getBackupFileTrackerID().toString(), tracker.getTrackerStatus().toString()));
+					}
 				}
 				
 				preProcessPacketFile(tracker, packet);
@@ -150,11 +170,23 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 					}
 				}
 				
-				//Always retry If an exception happens in final processing
-				//Note: Rework this if the call is no longer the last part of processing
-				retryTracker = true;
-			
-				tracker = completeFullFileProcessing(trackerID, clientID, packet.getPacketNumber(), packet.getPacketsTotal(), packet.getFileChecksumDigest());								
+				if(packet.getPacketNumber() == packet.getPacketsTotal()) {
+					this.trackerPacketsComplete.put(tracker.getBackupFileTrackerID(), Boolean.TRUE);
+				}
+
+				//The packets may come out of order to keep checking after flag is tripped.
+				//This is isolated because checking for all of the temp files over and over is
+				//very expensive.
+				if( Boolean.TRUE != this.trackerPacketsComplete.get(tracker.getBackupFileTrackerID()) ) {
+					logger.info(String.format("Completed write, leaving temp file for tracker %s, last packet number: %d of %d", 
+							trackerID.toString(), packet.getPacketNumber(), packet.getPacketsTotal()));
+				} else {
+					//Always retry If an exception happens in final processing
+					//Note: Rework this if the call is no longer the last part of processing
+					retryTracker = true;
+				
+					tracker = completeFullFileProcessing(trackerID, clientID, packet.getPacketNumber(), packet.getPacketsTotal(), packet.getFileChecksumDigest());
+				} 
 			}			
 		} catch (Exception ex) {		
 						
@@ -281,8 +313,8 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 			}
 			
 			if( false == isPacketsComplete ) {	
-				logger.info(String.format("Completed write, leaving temp file for tracker %s, last packet number: %d of %d", 
-								trackerID.toString(), packetNumber, packetsTotal));
+				logger.info(String.format("Last packet received but not all packets filled for tracker: %s, last packet number: %d", 
+								trackerID.toString(), packetNumber));
 			} else {
 							
 				logger.info(String.format("Completed write for last packet of tracker: %s, comparing checksum digest", trackerID.toString())); 
@@ -336,6 +368,8 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 						throw new Exception("Unable to create zip file due to checksum error");			
 					} 
 				} finally {
+					this.trackerPacketsComplete.invalidate(tracker.getBackupFileTrackerID());
+					
 					this.deleteTempFile(tracker);
 				}
 			}

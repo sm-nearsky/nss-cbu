@@ -1,5 +1,7 @@
 package com.nearskysolutions.cloudbackup.server;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +22,8 @@ public class ServerJmsListeners {
 	
 	@Autowired
 	private CloudBackupServer cloudBackupServer;
-	
-	@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-30")
+
+	@JmsListener(destination = "nssCbuClientUpdates", concurrency="1-10")
 	public void receiveMessage(String message) {
 
 		logger.trace("In CloudBackupServer.receiveMessage(String message)");

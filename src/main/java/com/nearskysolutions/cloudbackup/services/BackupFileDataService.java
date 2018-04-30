@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.repository.query.Param;
 
+import com.nearskysolutions.cloudbackup.common.BackupFileDataPacket;
 import com.nearskysolutions.cloudbackup.common.BackupFileTracker;
 
 public interface BackupFileDataService {
@@ -29,5 +30,5 @@ public interface BackupFileDataService {
 													String backupRepositoryType, 
 													String backupRepositoryLocation,
 			 										String backupRepositoryKey, 
-			 										String fullFileName);	
+			 										String fullFileName);
 }
