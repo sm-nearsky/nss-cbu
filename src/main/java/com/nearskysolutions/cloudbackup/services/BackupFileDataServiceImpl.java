@@ -1,6 +1,7 @@
 
 package com.nearskysolutions.cloudbackup.services;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -43,17 +44,22 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 			throw new NullPointerException("Client ID within backup file tracker data can't be null");
 		}
 				
-		List<BackupFileTracker> otherTrackers = trackerRepo.findMatchingTrackers(
-																fileTracker.getClientID(),
-																fileTracker.getBackupRepositoryType(),
-																fileTracker.getBackupRepositoryLocation(),																
-																fileTracker.getBackupRepositoryKey(),																
-																fileTracker.getFileFullPath());
+		List<String> otherTrackers = trackerRepo.findMatchingTrackers(
+																	fileTracker.getClientID(),
+																	fileTracker.getBackupRepositoryType(),
+																	fileTracker.getBackupRepositoryLocation(),																
+																	fileTracker.getBackupRepositoryKey(),																
+																	fileTracker.getFileFullPath());
 				
 		if( null != otherTrackers && otherTrackers.size() > 0) {
-			if( otherTrackers.size() == 1 && BackupFileTrackerStatus.Deleted == otherTrackers.get(0).getTrackerStatus()) {
-				//Replacing deleted file
-				trackerRepo.delete(otherTrackers.get(0));
+			if( otherTrackers.size() == 1 ) {
+				BackupFileTracker dupTracker = this.getTrackerByBackupFileTrackerID(UUID.fromString(otherTrackers.get(0)), fileTracker.getClientID());
+				if( BackupFileTrackerStatus.Deleted == dupTracker.getTrackerStatus() ) {
+					//Replacing deleted file
+					trackerRepo.delete(UUID.fromString(otherTrackers.get(0)));
+				} else {
+					throw new Exception(String.format("Unable to create tracker for existing non-deleted file: %s", fileTracker.toString()));
+				}
 			} else {			
 				throw new Exception(String.format("Unable to create tracker for existing file: %s", fileTracker.toString()));
 			}
@@ -261,11 +267,11 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 	}
 
 	@Override
-	public List<BackupFileTracker> findMatchingTrackers(UUID clientID, 
-														String backupRepositoryType,
-														String backupRepositoryLocation, 
-														String backupRepositoryKey, 
-														String fullFileName) {
+	public List<UUID> findMatchingTrackers(UUID clientID, 
+											String backupRepositoryType,
+											String backupRepositoryLocation, 
+											String backupRepositoryKey, 
+											String fullFileName) {
 		
 		logger.trace("In BackupFileDataPacketServiceImpl.findMatchingTrackers(UUID clientIDUUID clientID, "+
 						"String backupRepositoryType,String backupRepositoryLocation,String backupRepositoryKey, "+ 
@@ -289,8 +295,14 @@ public class BackupFileDataServiceImpl implements BackupFileDataService {
 									clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey,
 									fullFileName));
 				
-		List<BackupFileTracker> retVal = trackerRepo.findMatchingTrackers(clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey, fullFileName);				
-					
+		List<String> matchingVals = trackerRepo.findMatchingTrackers(clientID, backupRepositoryType, backupRepositoryLocation, backupRepositoryKey, fullFileName);				
+		List<UUID> retVal = new ArrayList<UUID>();
+		if( null != matchingVals ) {
+			for(String sVal : matchingVals) {
+				retVal.add(UUID.fromString(sVal));
+			}
+		}
+		
 		logger.info(String.format("Query found %d backup file trackers", retVal.size()));
 		
 		logger.trace(String.format("Completed BackupFileDataPacketServiceImpl.findMatchingTrackers(UUID clientIDUUID clientID, "+

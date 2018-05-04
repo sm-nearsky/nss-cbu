@@ -54,8 +54,6 @@ public class CloudBackupClient  implements CommandLineRunner {
 	
 	private ThreadPoolExecutor threadBank;
 	
-//	private AtomicInteger messageProcessingCount = new AtomicInteger(0);
-	
 	public void run(String... args) {
 	
 		try {
@@ -72,16 +70,12 @@ public class CloudBackupClient  implements CommandLineRunner {
 			this.processingStopTime = cal.getTime();
 					
 			this.threadBank = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.max(1, cbcConfig.getThreadProcessCount()));
-			this.threadBank.setKeepAliveTime(2, TimeUnit.SECONDS);
-			
+						
 			this.scanAndSendBackups();
-//		
-//			while(0 < messageProcessingCount.get()) { 
-//				Thread.sleep(500);
-//			}
 			
 			this.threadBank.shutdown();
-	        while (!this.threadBank.isTerminated()) {
+			
+	        while (false == this.threadBank.isTerminated()) {
 	        }
 	        
 		} catch (Exception ex) {
@@ -149,6 +143,11 @@ public class CloudBackupClient  implements CommandLineRunner {
 						logger.info("Test mode active, all files being treated as new trackers");
 						
 						isMoreTrackers = false;
+					} else if( (new Date()).after(CloudBackupClient.this.processingStopTime) ) {
+						logger.info(String.format("Past max run time of %d minutes, halting tracker requests from admin server", 
+								CloudBackupClient.this.cbcConfig.getMaxProcessingMinutes()));
+	
+						isMoreTrackers = false;
 					} else {			    
 						
 						logger.info(String.format("Calling backup admin service to scan current trackers for client: %s, current page: %d, page size: %d",
@@ -201,12 +200,6 @@ public class CloudBackupClient  implements CommandLineRunner {
 									}									
 								} else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() || 
 										   BackupFileTrackerStatus.Retry == tracker.getTrackerStatus() ) {
-										     									
-									if( BackupFileTrackerStatus.Pending != tracker.getTrackerStatus() ) {										
-										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
-										
-										this.sendTrackerUpdate(tracker);
-									}
 									
 									if( tracker.getFileReference().length() > cbcConfig.getFileSizeLimitBytes() ) {
 										logger.info(String.format("Found restart state for file: %s but over size limit so deleting", tracker.getFileReference().getAbsolutePath()));
@@ -214,13 +207,19 @@ public class CloudBackupClient  implements CommandLineRunner {
 										tracker.setTrackerStatus(BackupFileTrackerStatus.Deleted);
 	
 										this.sendTrackerUpdate(tracker);										
-									} else {
+									} else if( BackupFileTrackerStatus.Pending == tracker.getTrackerStatus() ) {
 										//Send packets for each tracker needing update
-										//Note: this state is set after the server processes tracker updates		
+										//Note: this state is set after the server processes tracker updates and this
+										//      is the only state from which packets are sent
 										logger.info(String.format("Sending packets for file: %s", tracker.getFileReference().getAbsolutePath()));
-										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
 										
 										this.sendPacketsForFile(tracker);
+									} else { //In retry
+										//Set state to pending so packets are sent at the next client run
+										tracker.setTrackerStatus(BackupFileTrackerStatus.Pending);
+										
+										this.sendTrackerUpdate(tracker);
+
 									}
 								} else if(BackupFileTrackerStatus.Processing == tracker.getTrackerStatus()) {
 																	
@@ -277,16 +276,22 @@ public class CloudBackupClient  implements CommandLineRunner {
 	private void processFileList(File trackerFile, List<String> trackerFilePathList) throws Exception {
 
 		logger.info(String.format("Processing file: %s for client %s", trackerFile.getAbsolutePath(), this.cbcConfig.getClientId().toString()));
+				
+		if( (new Date()).after(CloudBackupClient.this.processingStopTime) ) {
+			logger.info(String.format("Past max run time of %d minutes, halting file scan", 
+										CloudBackupClient.this.cbcConfig.getMaxProcessingMinutes()));
 			
+			return;
+		} 
 		
 		if(trackerFilePathList.contains(trackerFile.getAbsolutePath())) {
 			//Existing file found in tracker list, no need to take action or keep in the list
 			trackerFilePathList.remove(trackerFile.getAbsolutePath());
 		} else {			
 			if( trackerFile.length() > cbcConfig.getFileSizeLimitBytes() ) {
-				logger.info(String.format("Existing file not found, but over byte limit so not sending: %s", trackerFile.getAbsolutePath()));	
+				logger.info(String.format("New file found, but over byte limit so not sending: %s", trackerFile.getAbsolutePath()));	
 			} else {
-				logger.info(String.format("Existing file not found, tracker added: %s", trackerFile.getAbsolutePath()));
+				logger.info(String.format("New file found, tracker added: %s", trackerFile.getAbsolutePath()));
 				
 				BackupFileTracker newTracker = new BackupFileTracker(this.cbcConfig.getClientId(), 
 																	 this.cbcConfig.getRepoType(), 
@@ -309,56 +314,42 @@ public class CloudBackupClient  implements CommandLineRunner {
 
 			
 	private void sendTrackerUpdate(BackupFileTracker tracker) throws Exception {		
-				
-//		this.messageProcessingCount.incrementAndGet();
 		
-		this.threadBank.submit(() -> {						
-			try {
-				//Don't allow more messages if past maximum processing time
-				Date dtNow = new Date();
-				
-				if( dtNow.after(this.processingStopTime) ) {
-					logger.info(String.format("Past max run time of %d minutes, discarding tracker update send for file tracker ID: %s", 
-												this.cbcConfig.getMaxProcessingMinutes(), 
-												tracker.getBackupFileTrackerID().toString()));	
-				} else {	
-					this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);							   
-				}
+		//Don't allow stacking in a queue as this can fill memory
+		while(this.threadBank.getActiveCount() >= this.threadBank.getMaximumPoolSize()) {
+			Thread.sleep(250);
+		}
+		
+		this.threadBank.execute(new Runnable() {
 			
-			} catch(Exception ex) {
-				logger.error("Error in tracker send: ", ex);
-			} 
-//			finally {
-//				this.messageProcessingCount.decrementAndGet();
-//			}
+			@Override
+			public void run() {
+				try {
+					CloudBackupClient.this.clientUpdateHandlerQueue.sendFileTrackerUpdate(tracker);
+				} catch(Exception ex) {
+					logger.error("Error in tracker send: ", ex);
+				} 
+			}
 			
-			return null;
 		});		
 	}
 	
 	private void sendPacketsForFile(BackupFileTracker fileTracker) throws Exception {
-			
-//		this.messageProcessingCount.incrementAndGet();
 		
-		this.threadBank.submit(() -> {	
-			try {
-			//Don't allow more messages if past maximum processing time
-				Date dtNow = new Date();
-			
-				if( dtNow.after(this.processingStopTime) ) {
-					logger.info(String.format("Past max run time of %d minutes, discarding packet send for file tracker ID: %s", 
-												this.cbcConfig.getMaxProcessingMinutes(), 
-												fileTracker.getBackupFileTrackerID().toString()));	
-				} else {	
-					this.handleSendPackets(fileTracker);						   
-				}
-			} catch(Exception ex) {
-				logger.error("Error in packet send: ", ex);
-			} 
-//			finally {
-//				this.messageProcessingCount.decrementAndGet();
-//			}	
-			return null;
+		//Don't allow stacking in a queue as this can fill memory
+		while(this.threadBank.getActiveCount() >= this.threadBank.getMaximumPoolSize()) {
+			Thread.sleep(250);
+		}
+		
+		this.threadBank.execute(new Runnable() {
+			@Override
+			public void run() {				
+				try {
+					CloudBackupClient.this.handleSendPackets(fileTracker);
+				} catch(Exception ex) {
+					logger.error("Error in packet send: ", ex);
+				}		
+			}
 		});			
 		
 	}
@@ -446,8 +437,8 @@ public class CloudBackupClient  implements CommandLineRunner {
 					totalPackets = (int)(fileLength / (long)packetSize);
 					
 					//Likely that file length isn't evenly divisible by
-					//packet size so there will be on left over
-					if( totalPackets % packetSize != 0 ) {
+					//packet size so there will be one left over
+					if( fileLength % packetSize != 0 ) {
 						totalPackets += 1;
 					}
 				}

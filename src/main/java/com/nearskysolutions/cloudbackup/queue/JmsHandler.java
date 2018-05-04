@@ -49,9 +49,6 @@ public class JmsHandler {
 			throw new Exception("obj argument can't be null");
 		}
 				
-		//TODO: Clean up
-//		String queueSelection = String.format("%s.%s", 
-//									destination, ((null != messageObjectKey && messageObjectKey.length() > 0) ? messageObjectKey.substring(0,1) : "x"));
 		String queueSelection = destination;
 		String message = JsonConverter.ConvertObjectToJson(obj);
 		int numRetries = (bUseRetry ? 5 : 0);
@@ -64,25 +61,15 @@ public class JmsHandler {
 			try {
 				
 				this.jmsTemplate.convertAndSend(queueSelection, message);
-				
-//				this.jmsTemplate.send(queueSelection, new MessageCreator() {					
-//					@Override
-//					public Message createMessage(Session session) throws JMSException {
-//			        	  TextMessage textMessage = session.createTextMessage();
-//   						  textMessage.setStringProperty("JMSXGroupID", queueSelection);
-//						  textMessage.setText(message);
-//			        	  
-//			              return session.createTextMessage(message);
-//			          }
-//			      });
-				
+
 				numRetries = 0;
 				
 			} catch (JmsException jmsEx) {
 				
-				logger.info(String.format("JMS error: %s while trying to send message of type %s to queueSelection=%s, backing off for retry", 
+				logger.error(String.format("JMS error: %s while trying to send message of type %s to queueSelection=%s, backing off for retry", 
 										 	jmsEx.getMessage(),	obj.getClass().getName(), queueSelection));
 				
+				//Backoff for retry
 				Thread.sleep(60000 * retryMultiplier++);				
 			}
 		} while(--numRetries >= 0);
@@ -107,8 +94,6 @@ public class JmsHandler {
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(ConnectionFactory connectionFactory) {
         DefaultJmsListenerContainerFactory returnValue = new DefaultJmsListenerContainerFactory();  
-//        returnValue.setSessionTransacted(false);
-//        returnValue.setSessionAcknowledgeMode(Session.CLIENT_ACKNOWLEDGE);
         
         returnValue.setConnectionFactory(connectionFactory);
 

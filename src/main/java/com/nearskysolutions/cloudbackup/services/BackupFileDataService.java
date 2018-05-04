@@ -26,9 +26,9 @@ public interface BackupFileDataService {
 	
 	List<BackupFileTracker> getActiveBackupTrackersForClientByPage(UUID clientID, int pageID, int pageSize);
 	
-	List<BackupFileTracker> findMatchingTrackers(UUID clientID, 
-													String backupRepositoryType, 
-													String backupRepositoryLocation,
-			 										String backupRepositoryKey, 
-			 										String fullFileName);
+	List<UUID> findMatchingTrackers(UUID clientID, 
+										String backupRepositoryType, 
+										String backupRepositoryLocation,
+ 										String backupRepositoryKey, 
+ 										String fullFileName);
 }

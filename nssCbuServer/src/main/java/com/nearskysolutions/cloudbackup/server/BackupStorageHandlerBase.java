@@ -146,10 +146,11 @@ public abstract class BackupStorageHandlerBase implements BackupStorageHandler {
 					tracker = processFirstPacket(tracker.getBackupFileTrackerID(), tracker.getClientID());
 					
 				} else if(BackupFileTrackerStatus.Processing != tracker.getTrackerStatus()) {
-					
-					//Don't write status exception if already in error because we don't want to overwrite the 
-					//original message
-					if( BackupFileTrackerStatus.Error == tracker.getTrackerStatus()) {
+
+					if( BackupFileTrackerStatus.Error == tracker.getTrackerStatus() ||//Don't write status exception if already in error because we don't want to overwrite the original message 
+						(BackupFileTrackerStatus.Stored == tracker.getTrackerStatus() && 
+								(System.currentTimeMillis() - tracker.getLastStatusChange().getTime()) < 600000) //Ignore reprocess of a message for a message recently marked as stored. 
+						) {                                                                                      //This is a kludgy workaround for a problem that I have yet to solve
 						return;
 					} else {
 						throw new Exception(String.format("Invalid status for packet processing for tracker %s: status: %s",

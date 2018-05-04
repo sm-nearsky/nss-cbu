@@ -225,7 +225,7 @@ public class BackupFileDataServiceTest {
 			bft2 = fileDataSvc.addBackupFileTracker(bft2);
 			bft3 = fileDataSvc.addBackupFileTracker(bft3);
 					
-			List<BackupFileTracker> backupTrackers = fileDataSvc.findMatchingTrackers(clientID, 
+			List<UUID> backupTrackers = fileDataSvc.findMatchingTrackers(clientID, 
 																						bft2.getBackupRepositoryType(), 
 																						bft2.getBackupRepositoryLocation(), 
 																						bft2.getBackupRepositoryKey(), 
@@ -234,7 +234,7 @@ public class BackupFileDataServiceTest {
 			assertNotNull(backupTrackers);
 			assertEquals(1, backupTrackers.size());
 			
-			assertEquals(bft2.getBackupFileTrackerID(), backupTrackers.get(0).getBackupFileTrackerID());
+			assertEquals(bft2.getBackupFileTrackerID(), backupTrackers.get(0));
 			
 		} catch (Exception e) {		
 			logger.error("Error: ", e);

@@ -1,4 +1,7 @@
 com\nearskysolutions\cloudbackup\admin\CloudBackupAdmin.class
+META-INF\MANIFEST.MF
+META-INF\maven\com.nearskysolutions.cloudbackup\nssCbuAdmin\pom.xml
+META-INF\spring-configuration-metadata.json
+META-INF\maven\com.nearskysolutions.cloudbackup\nssCbuAdmin\pom.properties
 com\nearskysolutions\cloudbackup\admin\AdminController.class
 com\nearskysolutions\cloudbackup\admin\CloudBackupAdminConfig.class
-META-INF\spring-configuration-metadata.json

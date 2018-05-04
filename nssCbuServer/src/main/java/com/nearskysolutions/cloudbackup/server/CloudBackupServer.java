@@ -1,6 +1,7 @@
 package com.nearskysolutions.cloudbackup.server;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,7 +154,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 						
 		} else {
 		
-			List<BackupFileTracker> trackerFileList = this.fileDataSvc.findMatchingTrackers(newTracker.getClientID(), 
+			List<UUID> trackerFileList = this.fileDataSvc.findMatchingTrackers(newTracker.getClientID(), 
 																							newTracker.getBackupRepositoryType(), 
 																							newTracker.getBackupRepositoryLocation(), 
 																							newTracker.getBackupRepositoryKey(), 
@@ -167,12 +168,14 @@ public class CloudBackupServer  implements CommandLineRunner {
 			
 			}  else if(1 == trackerFileList.size()) {
 								
+				BackupFileTracker existingTracker = this.fileDataSvc.getTrackerByBackupFileTrackerID(trackerFileList.get(0), newTracker.getClientID());
+				
 				//Case where deleted file can be re-created before
 				//tracker purge
-				if( BackupFileTrackerStatus.Deleted == trackerFileList.get(0).getTrackerStatus() ) {
-					logger.info(String.format("Pre-purging tracker with ID: %d before new create", newTracker.getBackupFileTrackerID()));
+				if( BackupFileTrackerStatus.Deleted == existingTracker.getTrackerStatus() ) {
+					logger.info(String.format("Pre-purging tracker with ID: %s before new create", existingTracker.getBackupFileTrackerID().toString()));
 					//Delete tracker so a new one will be created
-					this.fileDataSvc.deleteBackupFileTracker(trackerFileList.get(0));
+					this.fileDataSvc.deleteBackupFileTracker(existingTracker);
 					
 					logger.info(String.format("Adding tracker record for client ID: %s, directory: %s, file: %s", 
 							newTracker.getClientID().toString(), 
@@ -187,7 +190,7 @@ public class CloudBackupServer  implements CommandLineRunner {
 							newTracker.getFileName()));
 					
 					//TODO Verify this works
-					newTracker.setBackupFileTrackerID(trackerFileList.get(0).getBackupFileTrackerID());
+					newTracker.setBackupFileTrackerID(trackerFileList.get(0));
 					
 					this.fileDataSvc.updateBackupFileTracker(newTracker);
 					
